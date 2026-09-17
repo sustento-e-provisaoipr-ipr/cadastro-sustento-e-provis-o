@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Sustento e Provisão</title>
+    <!-- Biblioteca de Gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f3f4f6;
+            --white: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); }
+        
+        #login-screen, #app-screen { min-height: 100vh; }
+        #app-screen { display: none; flex-direction: column; }
+        
+        #login-screen { display: flex; align-items: center; justify-content: center; }
+        .login-box { background: var(--white); padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .login-box h2 { text-align: center; margin-bottom: 1.5rem; color: var(--primary); }
+        
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
+        button { background: var(--primary); color: var(--white); border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; width: 100%; transition: 0.2s; }
+        button:hover { background: var(--primary-hover); }
+        button.secondary { background: var(--success); margin-top: 10px; }
+        button.danger { background: var(--danger); width: auto; padding: 0.5rem 1rem; }
+        button.admin-btn { background: var(--warning); color: #fff; }
+        
+        header { background: var(--white); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex-wrap: wrap; gap: 10px;}
+        nav { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;}
+        .nav-btn { background: transparent; color: var(--text); border: 1px solid var(--border); width: auto; padding: 0.5rem 1rem;}
+        .nav-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
+        
+        main { padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .view { display: none; background: var(--white); padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .view.active { display: block; }
+        .view-title { margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--bg); display: flex; justify-content: space-between; align-items: center;}
+
+        #dependentes-list { margin-bottom: 1rem; }
+        .dependente-item { background: var(--bg); padding: 1rem; border-radius: 4px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 1fr 100px 100px auto; gap: 10px; align-items: end; }
+
+        .bairros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        .bairro-card { background: var(--bg); padding: 1.5rem; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); }
+        .bairro-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .bairro-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .bairro-card span { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; overflow-y: auto; padding: 2rem 0; z-index: 1000;}
+        .modal-content { background: var(--white); padding: 2rem; border-radius: 8px; width: 100%; max-width: 800px; position: relative; }
+        .close-modal { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer; color: var(--text); background: none; border: none; width: auto; padding: 0; }
+        
+        .list-group { list-style: none; }
+        .list-group li { padding: 1rem; background: var(--bg); margin-bottom: 0.5rem; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;}
+        .list-group li:hover { background: #e5e7eb; }
+
+        .historico-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .historico-item { background: var(--bg); padding: 0.5rem 1rem; border-left: 4px solid var(--primary); margin-bottom: 0.5rem; }
+
+        .filter-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 2rem; }
+        
+        .checkbox-group { display: flex; gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap;}
+        .checkbox-group label { display: flex; align-items: center; gap: 0.5rem; font-weight: normal;}
+
+        /* Dashboard Styles */
+        .dash-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;}
+        .dash-card { background: var(--bg); padding: 1.5rem; border-radius: 8px; text-align: center; border-left: 4px solid var(--primary);}
+        .dash-card h4 { color: var(--text); margin-bottom: 0.5rem; font-size: 0.9rem; text-transform: uppercase;}
+        .dash-card span { font-size: 1.8rem; font-weight: bold; color: var(--primary);}
+        .dash-controls { background: var(--bg); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;}
+        
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+        .chart-container { background: var(--white); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); position: relative; height: 300px; width: 100%; display: flex; justify-content: center;}
+        
+        @media (max-width: 768px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .historico-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>Sistema de Auxílio</h2>
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text" id="login-user" placeholder="ex: au.costa">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="login-pass">
+            </div>
+            <button id="btn-login">Entrar</button>
+        </div>
+    </div>
+
+    <!-- TELA PRINCIPAL DO SISTEMA -->
+    <div id="app-screen">
+        <header>
+            <h2>Sustento & Provisão</h2>
+            <nav id="main-nav">
+                <button class="nav-btn active" data-target="view-cadastro" data-perm="menu_cadastro">Novo Cadastro</button>
+                <button class="nav-btn" data-target="view-familias" data-perm="menu_familias">Famílias</button>
+                <button class="nav-btn" data-target="view-match" data-perm="menu_doacoes">Doações (Filtro)</button>
+                <button class="nav-btn" data-target="view-dashboard" data-perm="menu_dashboard">📊 Dashboard</button>
+                <button class="nav-btn admin-btn" id="btn-menu-users" data-target="view-users" style="display:none;">Cadastrar User</button>
+                <button id="btn-logout" class="danger" style="margin-left: 10px;">Sair</button>
+            </nav>
+            <span id="user-display" style="font-weight: bold; width: 100%; text-align: right; margin-top: 5px; font-size: 0.85rem; color: #555;"></span>
+        </header>
+
+        <main>
+            <!-- VIEW: CADASTRO -->
+            <div id="view-cadastro" class="view active">
+                <h3 class="view-title">Cadastrar Nova Família</h3>
+                <form id="form-cadastro">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Nome do Responsável</label>
+                            <input type="text" id="cad-nome" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Idade (0 para recém-nascido)</label>
+                            <input type="number" id="cad-idade" required min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Sexo</label>
+                            <select id="cad-sexo">
+                                <option value="Masculino">Masculino</option>
+                                <option value="Feminino">Feminino</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Endereço Completo</label>
+                            <input type="text" id="cad-endereco" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Bairro</label>
+                            <input type="text" id="cad-bairro" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Telefone</label>
+                            <input type="text" id="cad-telefone" required>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 1.5rem 0 1rem;">Dependentes (Opcional)</h4>
+                    <div id="dependentes-list"></div>
+                    <button type="button" class="secondary" id="btn-add-dependente" style="width: auto; margin-bottom: 2rem;">+ Adicionar Pessoa na Residência</button>
+
+                    <button type="submit">Salvar Cadastro Completo</button>
+                </form>
+            </div>
+
+            <!-- VIEW: FAMILIAS -->
+            <div id="view-familias" class="view">
+                <h3 class="view-title">Famílias por Bairro</h3>
+                <div class="bairros-grid" id="bairros-container"></div>
+            </div>
+
+            <!-- VIEW: FILTRO DE DOAÇÕES -->
+            <div id="view-match" class="view">
+                <h3 class="view-title">
+                    Buscar Famílias para Doação 
+                    <button id="btn-novo-prefiltro" class="admin-btn nav-btn" style="display:none;">+ Criar Pré-filtro</button>
+                </h3>
+                
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label>Doação Rápida (Pré-filtros)</label>
+                        <select id="filtro-preset">
+                            <option value="">-- Personalizado --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Idade Mínima</label>
+                        <input type="number" id="filtro-idade-min" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Idade Máxima</label>
+                        <input type="number" id="filtro-idade-max" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Sexo Específico (Opcional)</label>
+                        <select id="filtro-sexo">
+                            <option value="">Qualquer</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                        </select>
+                    </div>
+                    <button id="btn-buscar-doacao">Buscar Famílias</button>
+                </div>
+
+                <div id="resultados-doacao"></div>
+            </div>
+
+            <!-- VIEW: DASHBOARD REAL 📊 -->
+            <div id="view-dashboard" class="view">
+                <h3 class="view-title">Dashboard Analítico</h3>
+                
+                <div class="dash-controls">
+                    <div class="form-group" style="margin:0;">
+                        <label>Data Início</label>
+                        <input type="date" id="dash-data-inicio">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Data Fim</label>
+                        <input type="date" id="dash-data-fim">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Bairro (Opcional)</label>
+                        <input type="text" id="dash-bairro" placeholder="Todos">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Nome Família (Opcional)</label>
+                        <input type="text" id="dash-nome" placeholder="Todos">
+                    </div>
+                    <button id="btn-filtrar-dash" style="width: auto;">Filtrar</button>
+                </div>
+
+                <!-- Cards Totais -->
+                <div class="dash-cards" id="dash-cards-container"></div>
+
+                <!-- Gráficos -->
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <canvas id="graficoTipos"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="graficoFamilias"></canvas>
+                    </div>
+                </div>
+
+                <!-- Tabela Detalhada -->
+                <div style="background:var(--bg); padding:1rem; border-radius:4px; max-height: 400px; overflow-y:auto;">
+                    <h4 style="margin-bottom:1rem;">Registros Detalhados</h4>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--border);">
+                                <th style="padding:0.5rem;">Data</th>
+                                <th style="padding:0.5rem;">Família</th>
+                                <th style="padding:0.5rem;">Bairro</th>
+                                <th style="padding:0.5rem;">Tipo de Ajuda</th>
+                                <th style="padding:0.5rem;">Observação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-tabela-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: GESTÃO DE USUÁRIOS -->
+            <div id="view-users" class="view">
+                <h3 class="view-title">Gerenciamento de Usuários</h3>
+                <form id="form-novo-user" style="background: var(--bg); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Nome de Usuário (Login)</label>
+                            <input type="text" id="novo-user-login" placeholder="ex: joao.ajudante" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha</label>
+                            <input type="text" id="novo-user-senha" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Permissões de Acesso</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="perm-cadastro" checked> Novo Cadastro</label>
+                            <label><input type="checkbox" id="perm-familias" checked> Famílias</label>
+                            <label><input type="checkbox" id="perm-doacoes" checked> Doações (Filtro)</label>
+                            <label><input type="checkbox" id="perm-dashboard"> Dashboard Analítico</label>
+                            <label><input type="checkbox" id="perm-admin"> Administrador</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="secondary">Cadastrar Usuário</button>
+                </form>
+                
+                <h4>Usuários Cadastrados</h4>
+                <ul class="list-group" id="lista-usuarios-sistema"></ul>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: LISTA DE FAMÍLIAS DO BAIRRO -->
+    <div id="modal-lista" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="fecharModal('modal-lista')">&times;</button>
+            <h3 id="modal-lista-titulo" style="margin-bottom: 1rem;">Famílias no Bairro</h3>
+            <ul class="list-group" id="modal-lista-ul"></ul>
+        </div>
+    </div>
+
+    <!-- MODAL: DETALHES DA FAMÍLIA -->
+    <div id="modal-familia" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="fecharModal('modal-familia')">&times;</button>
+            <div class="familia-header" id="detalhes-familia-header"></div>
+            
+            <div class="historico-grid">
+                <div>
+                    <h4 style="margin-bottom: 1rem; border-bottom: 1px solid #ccc;">Histórico de Ajuda Recebida</h4>
+                    <div id="historico-lista" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+                <div>
+                    <h4 style="margin-bottom: 1rem; border-bottom: 1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+                        Lançar Nova Ajuda
+                        <button id="btn-novo-tipo-ajuda" class="admin-btn nav-btn" style="display:none; font-size:0.8rem; padding: 2px 5px;">+ Novo Tipo</button>
+                    </h4>
+                    <form id="form-ajuda">
+                        <div class="form-group">
+                            <label>Tipo de Ajuda</label>
+                            <select id="ajuda-tipo" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data de Referência</label>
+                            <input type="date" id="ajuda-mes" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Detalhes/Observações</label>
+                            <textarea id="ajuda-obs" rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="secondary">Registrar Ajuda</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+        import { getDatabase, ref, set, push, get, child, update, onValue, remove } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjTaNGxWgg0Nd2F9SB_7_TLkEby2N5S1A",
+            authDomain: "cadastro-sustento-e-provisao.firebaseapp.com",
+            databaseURL: "https://cadastro-sustento-e-provisao-default-rtdb.firebaseio.com/",
+            projectId: "cadastro-sustento-e-provisao",
+            storageBucket: "cadastro-sustento-e-provisao.firebasestorage.app",
+            messagingSenderId: "217135459765",
+            appId: "1:217135459765:web:6f955887ef3f5fed1d3dfc",
+            measurementId: "G-SGLQTT8LX0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let dadosFamiliasGlobais = {}; 
+        let configGlobais = { tipos_ajuda: {}, pre_filtros: {} };
+        let familiaAtualId = null;
+        let currentUser = null;
+        
+        // Instâncias do Chart.js para evitar sobreposição
+        let chartTiposInstance = null;
+        let chartFamiliasInstance = null;
+
+        // Utilitários de formatação
+        function classificarIdadePura(idade) {
+            idade = parseInt(idade);
+            if (idade === 0) return 'Recém-nascido';
+            if (idade >= 1 && idade <= 10) return 'Criança';
+            if (idade >= 11 && idade <= 15) return 'Adolescente';
+            if (idade >= 16 && idade <= 17) return 'Jovem';
+            if (idade >= 18 && idade <= 49) return 'Adulto';
+            if (idade >= 50) return 'Idoso';
+            return '';
+        }
+        function formatarIdade(idade) { return `${idade} anos (${classificarIdadePura(idade)})`; }
+        function formatarDataBR(dataString) {
+            if(!dataString) return '';
+            const [ano, mes, dia] = dataString.split('-');
+            return (ano && mes && dia) ? `${dia}/${mes}/${ano}` : dataString;
+        }
+
+        // ==========================================
+        // SISTEMA DE LOGIN, SESSÃO E LOGOUT
+        // ==========================================
+        async function checkSuperAdmins() {
+            const superAdmins = ['au_costa', 'de_costa']; 
+            for(let sa of superAdmins) {
+                const sn = await get(ref(db, 'user_sistema/' + sa));
+                if(!sn.exists()) {
+                    await set(ref(db, 'user_sistema/' + sa), {
+                        login: sa.replace('_', '.'), senha: '80605276', role: 'admin',
+                        perm_cadastro: true, perm_familias: true, perm_doacoes: true, perm_dashboard: true
+                    });
+                }
+            }
+            const conf = await get(ref(db, 'configuracoes'));
+            if(!conf.exists()) {
+                await set(ref(db, 'configuracoes/tipos_ajuda'), { t1: "Cesta Básica", t2: "Farmácia/Remédio", t3: "Conta de Luz", t4: "Conta de Água", t5: "Gás de Cozinha", t6: "Roupas", t7: "Outros" });
+                await set(ref(db, 'configuracoes/pre_filtros'), { pf1: {nome: "Fralda Infantil (0 a 3 anos)", min: 0, max: 3, sexo: ""}, pf2: {nome: "Fralda Geriátrica (50+ anos)", min: 50, max: 100, sexo: ""} });
+            }
+        }
+
+        // Verifica Sessão ao recarregar a página (F5)
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkSuperAdmins();
+            const sessionUser = sessionStorage.getItem('currentUser');
+            if(sessionUser) {
+                currentUser = JSON.parse(sessionUser);
+                iniciarSistema();
+            }
+            carregarRascunhoForm();
+        });
+
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            const user = document.getElementById('login-user').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+            const userId = user.replace(/\./g, '_'); 
+
+            const userSnap = await get(ref(db, 'user_sistema/' + userId));
+            if (userSnap.exists() && userSnap.val().senha === pass) {
+                currentUser = userSnap.val();
+                sessionStorage.setItem('currentUser', JSON.stringify(currentUser)); // Salva sessão
+                iniciarSistema();
+            } else {
+                alert('Usuário ou senha incorretos!');
+            }
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            sessionStorage.removeItem('currentUser');
+            document.getElementById('app-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('login-user').value = '';
+            document.getElementById('login-pass').value = '';
+        });
+
+        function iniciarSistema() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'flex';
+            document.getElementById('user-display').innerText = `Logado como: ${currentUser.login}`;
+            
+            aplicarPermissoes();
+            configurarFiltroDashboardPadrao();
+            carregarDadosGerais();
+            
+            // Abre primeira aba disponivel
+            const firstVisible = document.querySelector('.nav-btn[style!="display: none;"]');
+            if(firstVisible) firstVisible.click();
+        }
+
+        function aplicarPermissoes() {
+            const isAdmin = currentUser.role === 'admin';
+            document.querySelectorAll('.admin-btn').forEach(b => b.style.display = isAdmin ? 'inline-block' : 'none');
+            document.querySelector('[data-target="view-cadastro"]').style.display = currentUser.perm_cadastro ? 'inline-block' : 'none';
+            document.querySelector('[data-target="view-familias"]').style.display = currentUser.perm_familias ? 'inline-block' : 'none';
+            document.querySelector('[data-target="view-match"]').style.display = currentUser.perm_doacoes ? 'inline-block' : 'none';
+            document.querySelector('[data-target="view-dashboard"]').style.display = currentUser.perm_dashboard ? 'inline-block' : 'none';
+        }
+
+        // ==========================================
+        // PREVENÇÃO DE PERDA DE DADOS (RASCUNHO F5)
+        // ==========================================
+        let dependentesCount = 0;
+        
+        function salvarRascunhoForm() {
+            const rascunho = {
+                nome: document.getElementById('cad-nome').value,
+                idade: document.getElementById('cad-idade').value,
+                sexo: document.getElementById('cad-sexo').value,
+                endereco: document.getElementById('cad-endereco').value,
+                bairro: document.getElementById('cad-bairro').value,
+                telefone: document.getElementById('cad-telefone').value,
+                dependentes: []
+            };
+            document.querySelectorAll('.dependente-item').forEach(item => {
+                const id = item.id.split('-')[1];
+                rascunho.dependentes.push({
+                    nome: document.getElementById(`dep-nome-${id}`).value,
+                    idade: document.getElementById(`dep-idade-${id}`).value,
+                    sexo: document.getElementById(`dep-sexo-${id}`).value
+                });
+            });
+            localStorage.setItem('rascunhoCadastro', JSON.stringify(rascunho));
+        }
+
+        // Dispara salvamento em qualquer digitação no form
+        document.getElementById('form-cadastro').addEventListener('input', salvarRascunhoForm);
+        document.getElementById('form-cadastro').addEventListener('change', salvarRascunhoForm);
+
+        function carregarRascunhoForm() {
+            const salvo = localStorage.getItem('rascunhoCadastro');
+            if(salvo) {
+                const rascunho = JSON.parse(salvo);
+                document.getElementById('cad-nome').value = rascunho.nome || '';
+                document.getElementById('cad-idade').value = rascunho.idade || '';
+                document.getElementById('cad-sexo').value = rascunho.sexo || 'Masculino';
+                document.getElementById('cad-endereco').value = rascunho.endereco || '';
+                document.getElementById('cad-bairro').value = rascunho.bairro || '';
+                document.getElementById('cad-telefone').value = rascunho.telefone || '';
+                
+                rascunho.dependentes.forEach(dep => criarDependenteDOM(dep.nome, dep.idade, dep.sexo));
+            }
+        }
+
+        function criarDependenteDOM(nome = '', idade = '', sexo = 'Masculino') {
+            dependentesCount++;
+            const div = document.createElement('div');
+            div.className = 'dependente-item';
+            div.id = `dep-${dependentesCount}`;
+            div.innerHTML = `
+                <div><label>Nome do Dependente</label><input type="text" id="dep-nome-${dependentesCount}" value="${nome}" required></div>
+                <div><label>Idade</label><input type="number" id="dep-idade-${dependentesCount}" min="0" value="${idade}" required></div>
+                <div>
+                    <label>Sexo</label>
+                    <select id="dep-sexo-${dependentesCount}">
+                        <option value="Masculino" ${sexo==='Masculino'?'selected':''}>M</option>
+                        <option value="Feminino" ${sexo==='Feminino'?'selected':''}>F</option>
+                    </select>
+                </div>
+                <button type="button" class="danger" onclick="document.getElementById('dep-${dependentesCount}').remove(); salvarRascunhoForm();">X</button>
+            `;
+            document.getElementById('dependentes-list').appendChild(div);
+        }
+
+        document.getElementById('btn-add-dependente').addEventListener('click', () => {
+            criarDependenteDOM();
+            salvarRascunhoForm();
+        });
+
+        // ==========================================
+        // DADOS E CADASTRO
+        // ==========================================
+        function carregarDadosGerais() {
+            onValue(ref(db, 'cadastro'), (snapshot) => {
+                dadosFamiliasGlobais = snapshot.val() || {};
+                renderizarFamilias();
+                if(document.getElementById('view-dashboard').classList.contains('active')) atualizarDashboard();
+                if(familiaAtualId) atualizarHistoricoDOM(dadosFamiliasGlobais[familiaAtualId]?.historico_ajuda);
+            });
+
+            onValue(ref(db, 'configuracoes'), (snapshot) => {
+                configGlobais = snapshot.val() || { tipos_ajuda: {}, pre_filtros: {} };
+                atualizarListasDinamicas();
+            });
+
+            if(currentUser.role === 'admin') {
+                onValue(ref(db, 'user_sistema'), (snapshot) => renderizarUsuariosAdmin(snapshot.val() || {}));
+            }
+            document.getElementById('ajuda-mes').valueAsDate = new Date();
+        }
+
+        function atualizarListasDinamicas() {
+            const selectTipo = document.getElementById('ajuda-tipo');
+            selectTipo.innerHTML = '';
+            for(let key in configGlobais.tipos_ajuda) selectTipo.innerHTML += `<option value="${configGlobais.tipos_ajuda[key]}">${configGlobais.tipos_ajuda[key]}</option>`;
+
+            const selectFiltro = document.getElementById('filtro-preset');
+            selectFiltro.innerHTML = '<option value="">-- Personalizado --</option>';
+            for(let key in configGlobais.pre_filtros) selectFiltro.innerHTML += `<option value="${key}">${configGlobais.pre_filtros[key].nome}</option>`;
+        }
+
+        document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idadeResp = document.getElementById('cad-idade').value;
+            const novaFamilia = {
+                responsavel: {
+                    nome: document.getElementById('cad-nome').value.toUpperCase(),
+                    idade: idadeResp, classificacao: classificarIdadePura(idadeResp),
+                    sexo: document.getElementById('cad-sexo').value,
+                    endereco: document.getElementById('cad-endereco').value,
+                    bairro: document.getElementById('cad-bairro').value.toUpperCase(),
+                    telefone: document.getElementById('cad-telefone').value,
+                    data_cadastro: new Date().toISOString()
+                },
+                dependentes: {}
+            };
+
+            document.querySelectorAll('.dependente-item').forEach(item => {
+                const id = item.id.split('-')[1];
+                const idadeDep = document.getElementById(`dep-idade-${id}`).value;
+                const pushKey = push(ref(db, 'temp')).key; 
+                novaFamilia.dependentes[pushKey] = {
+                    nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), 
+                    idade: idadeDep, sexo: document.getElementById(`dep-sexo-${id}`).value, 
+                    classificacao: classificarIdadePura(idadeDep)
+                };
+            });
+
+            try {
+                await push(ref(db, 'cadastro'), novaFamilia);
+                alert('Família cadastrada com sucesso!');
+                document.getElementById('form-cadastro').reset();
+                document.getElementById('dependentes-list').innerHTML = '';
+                localStorage.removeItem('rascunhoCadastro'); // Limpa rascunho
+            } catch (error) { alert('Erro: ' + error.message); }
+        });
+
+        // ==========================================
+        // DASHBOARD INTELIGENTE 📊
+        // ==========================================
+        function configurarFiltroDashboardPadrao() {
+            const now = new Date();
+            const primeiroDia = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+            const hoje = now.toISOString().split('T')[0];
+            
+            document.getElementById('dash-data-inicio').value = primeiroDia;
+            document.getElementById('dash-data-fim').value = hoje;
+        }
+
+        document.getElementById('btn-filtrar-dash').addEventListener('click', atualizarDashboard);
+
+        function atualizarDashboard() {
+            if(!document.getElementById('view-dashboard').classList.contains('active')) return;
+
+            const dtIniStr = document.getElementById('dash-data-inicio').value;
+            const dtFimStr = document.getElementById('dash-data-fim').value;
+            const bFiltro = document.getElementById('dash-bairro').value.toUpperCase();
+            const nFiltro = document.getElementById('dash-nome').value.toUpperCase();
+
+            let totaisPorTipo = {};
+            let rankingFamilias = {};
+            let totaisFamiliasUnicas = new Set();
+            let tableHTML = '';
+            
+            // Zerar contador de tipos base
+            for(let key in configGlobais.tipos_ajuda) totaisPorTipo[configGlobais.tipos_ajuda[key]] = 0;
+
+            for(let id in dadosFamiliasGlobais) {
+                const fam = dadosFamiliasGlobais[id];
+                if(bFiltro && !fam.responsavel.bairro.includes(bFiltro)) continue;
+                if(nFiltro && !fam.responsavel.nome.includes(nFiltro)) continue;
+
+                if(fam.historico_ajuda) {
+                    for(let hId in fam.historico_ajuda) {
+                        const h = fam.historico_ajuda[hId];
+                        
+                        if(dtIniStr && h.data_ref < dtIniStr) continue;
+                        if(dtFimStr && h.data_ref > dtFimStr) continue;
+
+                        totaisPorTipo[h.tipo] = (totaisPorTipo[h.tipo] || 0) + 1;
+                        totaisFamiliasUnicas.add(id);
+                        
+                        rankingFamilias[fam.responsavel.nome] = (rankingFamilias[fam.responsavel.nome] || 0) + 1;
+
+                        tableHTML += `
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding:0.5rem;">${formatarDataBR(h.data_ref)}</td>
+                                <td style="padding:0.5rem; color:var(--primary); cursor:pointer;" onclick="abrirModalFamilia('${id}')">${fam.responsavel.nome}</td>
+                                <td style="padding:0.5rem;">${fam.responsavel.bairro}</td>
+                                <td style="padding:0.5rem; font-weight:bold;">${h.tipo}</td>
+                                <td style="padding:0.5rem; font-size:0.9em;">${h.observacao || '-'}</td>
+                            </tr>
+                        `;
+                    }
+                }
+            }
+
+            // Cards Topo
+            const cardsContainer = document.getElementById('dash-cards-container');
+            cardsContainer.innerHTML = `
+                <div class="dash-card" style="border-left-color: var(--success); background:#f0fdf4;">
+                    <h4>Famílias Atendidas</h4><span style="color:var(--success)">${totaisFamiliasUnicas.size}</span>
+                </div>
+            `;
+            for(let tipo in totaisPorTipo) {
+                if(totaisPorTipo[tipo] > 0) cardsContainer.innerHTML += `<div class="dash-card"><h4>${tipo}</h4><span>${totaisPorTipo[tipo]}</span></div>`;
+            }
+            document.getElementById('dash-tabela-body').innerHTML = tableHTML || '<tr><td colspan="5" style="padding:1rem; text-align:center;">Nenhum registro.</td></tr>';
+
+            renderizarGraficos(totaisPorTipo, rankingFamilias);
+        }
+
+        function renderizarGraficos(totaisTipos, rankingFamilias) {
+            // Preparar Dados Grafico Tipos (Remover zerados)
+            const labelsTipos = [];
+            const dataTipos = [];
+            for(let tipo in totaisTipos) {
+                if(totaisTipos[tipo] > 0) { labelsTipos.push(tipo); dataTipos.push(totaisTipos[tipo]); }
+            }
+
+            // Preparar Dados Grafico Ranking (Top 5)
+            const familiasArray = Object.entries(rankingFamilias).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const labelsFamilias = familiasArray.map(f => f[0].split(' ')[0]); // Pega só 1º nome para caber
+            const dataFamilias = familiasArray.map(f => f[1]);
+
+            // Grafico 1: Tipos de Doações (Doughnut)
+            const ctxTipos = document.getElementById('graficoTipos').getContext('2d');
+            if(chartTiposInstance) chartTiposInstance.destroy();
+            chartTiposInstance = new Chart(ctxTipos, {
+                type: 'doughnut',
+                data: {
+                    labels: labelsTipos.length > 0 ? labelsTipos : ['Nenhum dado'],
+                    datasets: [{
+                        data: dataTipos.length > 0 ? dataTipos : [1],
+                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#eab308'],
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Distribuição por Tipo de Ajuda' } } }
+            });
+
+            // Grafico 2: Ranking de Famílias (Bar)
+            const ctxFamilias = document.getElementById('graficoFamilias').getContext('2d');
+            if(chartFamiliasInstance) chartFamiliasInstance.destroy();
+            chartFamiliasInstance = new Chart(ctxFamilias, {
+                type: 'bar',
+                data: {
+                    labels: labelsFamilias.length > 0 ? labelsFamilias : ['-'],
+                    datasets: [{
+                        label: 'Qtd. de Ajudas Recebidas',
+                        data: dataFamilias.length > 0 ? dataFamilias : [0],
+                        backgroundColor: '#2563eb',
+                        borderRadius: 4
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { title: { display: true, text: 'Top 5 Famílias mais assistidas (Período)' }, legend: {display: false} },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        // Navegação Visual do Menu
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            if(btn.id === 'btn-novo-prefiltro' || btn.id === 'btn-novo-tipo-ajuda' || btn.id === 'btn-menu-users') return;
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('nav .nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.target).classList.add('active');
+                
+                if(e.target.dataset.target === 'view-dashboard') atualizarDashboard();
+            });
+        });
+
+        document.getElementById('btn-menu-users').addEventListener('click', (e) => {
+            document.querySelectorAll('nav .nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            e.target.classList.add('active');
+            document.getElementById('view-users').classList.add('active');
+        });
+
+        // ==========================================
+        // OUTRAS FUNÇÕES (Modal, Familias, Users)
+        // ==========================================
+        // Mantive intactas suas funções de renderizar famílias, buscar doação e modais
+        function renderizarFamilias() {
+            const bairrosAgrupados = {};
+            for (let id in dadosFamiliasGlobais) {
+                const fam = dadosFamiliasGlobais[id];
+                if(!bairrosAgrupados[fam.responsavel.bairro]) bairrosAgrupados[fam.responsavel.bairro] = [];
+                bairrosAgrupados[fam.responsavel.bairro].push({ id, ...fam });
+            }
+            const container = document.getElementById('bairros-container');
+            container.innerHTML = '';
+            for (let bairro in bairrosAgrupados) {
+                const div = document.createElement('div');
+                div.className = 'bairro-card';
+                div.innerHTML = `<h3>${bairro}</h3><span>${bairrosAgrupados[bairro].length} Família(s)</span>`;
+                div.addEventListener('click', () => abrirModalLista(bairro, bairrosAgrupados[bairro]));
+                container.appendChild(div);
+            }
+        }
+        window.fecharModal = (id) => document.getElementById(id).style.display = 'none';
+
+        function abrirModalLista(bairro, familias) {
+            document.getElementById('modal-lista-titulo').innerText = `Famílias - ${bairro}`;
+            const ul = document.getElementById('modal-lista-ul');
+            ul.innerHTML = '';
+            familias.forEach(fam => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${fam.responsavel.nome}</strong> <span>Tel: ${fam.responsavel.telefone}</span>`;
+                li.addEventListener('click', () => abrirModalFamilia(fam.id));
+                ul.appendChild(li);
+            });
+            document.getElementById('modal-lista').style.display = 'flex';
+        }
+
+        function abrirModalFamilia(id) {
+            familiaAtualId = id;
+            const fam = dadosFamiliasGlobais[id];
+            let depHtml = '';
+            if(fam.dependentes) {
+                depHtml = '<strong>Dependentes:</strong><ul>';
+                for(let key in fam.dependentes) {
+                    const d = fam.dependentes[key];
+                    depHtml += `<li>${d.nome} - ${formatarIdade(d.idade)} - ${d.sexo}</li>`;
+                }
+                depHtml += '</ul>';
+            }
+            document.getElementById('detalhes-familia-header').innerHTML = `
+                <h2 style="color: var(--primary); margin-bottom: 0.5rem;">${fam.responsavel.nome}</h2>
+                <p><strong>Idade:</strong> ${formatarIdade(fam.responsavel.idade)} | <strong>Sexo:</strong> ${fam.responsavel.sexo}</p>
+                <p><strong>Endereço:</strong> ${fam.responsavel.endereco}, ${fam.responsavel.bairro}</p>
+                <p><strong>Telefone:</strong> ${fam.responsavel.telefone}</p>
+                ${depHtml ? `<div style="margin-top: 1rem; background: #f9fafb; padding: 1rem; border-radius: 4px;">${depHtml}</div>` : ''}
+            `;
+            atualizarHistoricoDOM(fam.historico_ajuda);
+            document.getElementById('modal-familia').style.display = 'flex';
+        }
+
+        function atualizarHistoricoDOM(historico) {
+            const histDiv = document.getElementById('historico-lista');
+            histDiv.innerHTML = '';
+            if(!historico) { histDiv.innerHTML = '<p>Nenhuma ajuda registrada.</p>'; return; }
+            Object.keys(historico).reverse().forEach(key => {
+                const item = historico[key];
+                histDiv.innerHTML += `
+                    <div class="historico-item">
+                        <strong style="color:var(--primary)">${item.tipo}</strong> <br>
+                        <small>Data Ref: <b>${formatarDataBR(item.data_ref)}</b> | Lançado por: ${item.user_cadastro}</small>
+                        <p style="margin-top:5px; font-size: 0.9rem;">${item.observacao}</p>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('form-ajuda').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!familiaAtualId) return;
+            const ajudaData = {
+                tipo: document.getElementById('ajuda-tipo').value,
+                data_ref: document.getElementById('ajuda-mes').value, 
+                observacao: document.getElementById('ajuda-obs').value,
+                timestamp: new Date().toISOString(),
+                user_cadastro: currentUser.login
+            };
+            await push(ref(db, `cadastro/${familiaAtualId}/historico_ajuda`), ajudaData);
+            document.getElementById('ajuda-obs').value = '';
+        });
+
+        // Configurações dinamicas (Admin)
+        document.getElementById('btn-novo-tipo-ajuda').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const novo = prompt('Digite o nome do novo tipo de ajuda:');
+            if(novo) await push(ref(db, 'configuracoes/tipos_ajuda'), novo.trim());
+        });
+        
+        document.getElementById('btn-novo-prefiltro').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const nome = prompt('Nome do Filtro (ex: Sapato Feminino):');
+            if(!nome) return;
+            const min = prompt('Idade Minima (ex: 0):') || 0;
+            const max = prompt('Idade Maxima (ex: 100):') || 100;
+            const sexo = prompt('Sexo Específico? (Digite Masculino, Feminino ou deixe vazio):') || "";
+            await push(ref(db, 'configuracoes/pre_filtros'), { nome, min: parseInt(min), max: parseInt(max), sexo });
+        });
+
+        // Pesquisa Cruzada (Doações)
+        document.getElementById('filtro-preset').addEventListener('change', (e) => {
+            const key = e.target.value;
+            if(key && configGlobais.pre_filtros[key]) {
+                const conf = configGlobais.pre_filtros[key];
+                document.getElementById('filtro-idade-min').value = conf.min; 
+                document.getElementById('filtro-idade-max').value = conf.max; 
+                document.getElementById('filtro-sexo').value = conf.sexo;
+            } else {
+                document.getElementById('filtro-idade-min').value = ""; 
+                document.getElementById('filtro-idade-max').value = ""; 
+                document.getElementById('filtro-sexo').value = "";
+            }
+        });
+
+        document.getElementById('btn-buscar-doacao').addEventListener('click', () => {
+            const min = parseInt(document.getElementById('filtro-idade-min').value) || 0;
+            const max = parseInt(document.getElementById('filtro-idade-max').value) || 150;
+            const filtroSexo = document.getElementById('filtro-sexo').value;
+
+            const resultados = [];
+            for (let id in dadosFamiliasGlobais) {
+                const fam = dadosFamiliasGlobais[id];
+                let pessoasCompativeis = [];
+
+                const idadeResp = parseInt(fam.responsavel.idade);
+                if(idadeResp >= min && idadeResp <= max && (!filtroSexo || fam.responsavel.sexo === filtroSexo)) {
+                    pessoasCompativeis.push(`${fam.responsavel.nome} (Resp, ${idadeResp} anos)`);
+                }
+                if(fam.dependentes) {
+                    for(let k in fam.dependentes) {
+                        const dep = fam.dependentes[k];
+                        const idadeDep = parseInt(dep.idade);
+                        if(idadeDep >= min && idadeDep <= max && (!filtroSexo || dep.sexo === filtroSexo)) {
+                            pessoasCompativeis.push(`${dep.nome} (Dep, ${idadeDep} anos)`);
+                        }
+                    }
+                }
+                if(pessoasCompativeis.length > 0) {
+                    resultados.push({
+                        familiaId: id, responsavel: fam.responsavel.nome, telefone: fam.responsavel.telefone,
+                        bairro: fam.responsavel.bairro, matches: pessoasCompativeis
+                    });
+                }
+            }
+            const resDiv = document.getElementById('resultados-doacao');
+            if(resultados.length === 0) { resDiv.innerHTML = '<p>Nenhuma família encontrada.</p>'; return; }
+            let html = `<h4 style="margin-bottom: 1rem;">${resultados.length} Família(s) Encontrada(s):</h4><ul class="list-group">`;
+            resultados.forEach(r => {
+                html += `
+                    <li onclick="abrirModalFamilia('${r.familiaId}')" style="display:flex; flex-direction:column; gap:5px;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>Família de: ${r.responsavel}</strong><span>${r.bairro} | Tel: ${r.telefone}</span>
+                        </div>
+                        <div style="color: var(--success); font-size: 0.9rem;">
+                            <strong>Enquadram-se:</strong> ${r.matches.join(', ')}
+                        </div>
+                    </li>
+                `;
+            });
+            resDiv.innerHTML = html + '</ul>';
+        });
+    </script>
+</body>
+</html>
