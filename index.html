@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Sustento e Provisão</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -383,6 +389,13 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getDatabase, ref, set, push, get, update, onValue, remove } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+        // Registrar PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW falhou: ', err));
+            });
+        }
 
         const firebaseConfig = {
             apiKey: "AIzaSyBjTaNGxWgg0Nd2F9SB_7_TLkEby2N5S1A",
