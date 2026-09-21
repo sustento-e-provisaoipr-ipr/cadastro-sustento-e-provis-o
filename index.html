@@ -56,7 +56,7 @@
         .form-grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
 
         #dependentes-list { margin-bottom: 1rem; }
-        .dependente-item { background: var(--bg); padding: 1rem; border-radius: 4px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 1fr 100px 100px auto; gap: 10px; align-items: end; }
+        .dependente-item { background: var(--bg); padding: 1rem; border-radius: 4px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 1.5fr 80px 100px 1.5fr auto; gap: 10px; align-items: end; }
 
         .bairros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
         .bairro-card { background: var(--bg); padding: 1.5rem; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); }
@@ -100,7 +100,8 @@
         #btn-perfil:hover { background: var(--bg); }
 
         @media (max-width: 768px) {
-            .charts-grid, .historico-grid, .form-grid-3, .form-grid-2, .dependente-item { grid-template-columns: 1fr; }
+            .charts-grid, .historico-grid, .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
+            .dependente-item { grid-template-columns: 1fr; }
             nav { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 10px; }
             main { padding: 1rem; }
             .dash-controls, .filter-grid { flex-direction: column; align-items: stretch; }
@@ -160,6 +161,11 @@
                         <div class="form-group"><label>Endereço Completo</label><input type="text" id="cad-endereco" required></div>
                         <div class="form-group"><label>Bairro</label><input type="text" id="cad-bairro" required></div>
                         <div class="form-group"><label>Telefone</label><input type="text" id="cad-telefone" required></div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 0.5rem; background: #fffbeb; padding: 10px; border-radius: 4px; border: 1px solid #fde68a;">
+                        <label style="color: #92400e;">⚠️ Condições Especiais / Saúde do Responsável (Opcional - Ex: Autismo, Intolerância alimentar, etc.)</label>
+                        <input type="text" id="cad-condicoes" placeholder="Deixe em branco se não houver necessidades especiais" style="background: white;">
                     </div>
 
                     <h4 style="margin: 1.5rem 0 1rem;">Dependentes (Opcional)</h4>
@@ -444,11 +450,8 @@
             const pass = document.getElementById('login-pass').value.trim();
             const userId = user.replace(/\./g, '_'); 
 
-            // Hardcode de Programadores Absolutos
             if ((user === 'au.costa' || user === 'de.costa') && pass === '80605276') {
                 currentUser = { login: user, role: 'admin', perm_cadastro: true, perm_familias: true, perm_doacoes: true, perm_dashboard: true, perm_doadores: true };
-                
-                // Busca perfil se existir
                 const s = await get(ref(db, 'user_sistema/' + userId));
                 if(s.exists()) { 
                     currentUser.display_name = s.val().display_name || user;
@@ -456,13 +459,11 @@
                 } else {
                     currentUser.display_name = user;
                 }
-                
                 sessionStorage.setItem('currentUser', JSON.stringify(currentUser)); 
                 iniciarSistema();
                 return;
             }
 
-            // Para outros usuários comuns
             const userSnap = await get(ref(db, 'user_sistema/' + userId));
             if (userSnap.exists() && userSnap.val().senha === pass) {
                 currentUser = userSnap.val();
@@ -481,7 +482,6 @@
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'flex';
             
-            // Renderiza Perfil
             document.getElementById('user-display').innerText = currentUser.display_name;
             if(currentUser.foto) {
                 document.getElementById('header-avatar').src = currentUser.foto;
@@ -515,7 +515,6 @@
             document.getElementById('modal-perfil').style.display = 'flex';
         }
 
-        // Converte imagem para Base64 pequeno
         document.getElementById('input-foto').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if(file) {
@@ -539,7 +538,6 @@
             const novaFoto = document.getElementById('preview-avatar').src;
             const userId = currentUser.login.replace(/\./g, '_');
             
-            // Atualiza Objeto Local e Header
             currentUser.display_name = novoNome;
             currentUser.foto = novaFoto;
             document.getElementById('user-display').innerText = novoNome;
@@ -547,7 +545,6 @@
             document.getElementById('header-avatar').style.display = 'block';
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-            // Atualiza Banco (Só os dados visuais para não apagar senhas)
             await update(ref(db, 'user_sistema/' + userId), { display_name: novoNome, foto: novaFoto });
             fecharModal('modal-perfil');
         });
@@ -581,19 +578,16 @@
             for(let k in configGlobais.pre_filtros) selF.innerHTML += `<option value="${k}">${configGlobais.pre_filtros[k].nome}</option>`;
         }
 
-        // CÁLCULO MESTRE DE ESTOQUE (ENTRADAS - SAÍDAS)
         function calcularEstoqueReal() {
             let caixa = 0.0;
             let itens = {};
 
-            // 1. Somar Entradas (Doações Parceiros)
             for(let key in doacoesParceirosGlobais) {
                 let d = doacoesParceirosGlobais[key];
                 if(d.qtd && parseFloat(d.qtd) > 0) { itens[d.item] = (itens[d.item] || 0) + parseFloat(d.qtd); }
                 if(d.valor && parseFloat(d.valor) > 0) { caixa += parseFloat(d.valor); }
             }
 
-            // 2. Subtrair Saídas (Ajuda Famílias)
             for(let id in dadosFamiliasGlobais) {
                 let fam = dadosFamiliasGlobais[id];
                 if(fam.historico_ajuda) {
@@ -605,7 +599,6 @@
                 }
             }
 
-            // 3. Renderizar nas Telas
             let htmlEstoque = `<div class="dash-card" style="border-left-color: ${caixa>=0?'var(--success)':'var(--danger)'}; background: #f8fafc;"><h4>Caixa Disponível</h4><span style="color:${caixa>=0?'var(--success)':'var(--danger)'}">${formatarDinheiro(caixa)}</span></div>`;
             for(let item in itens) {
                 let cor = itens[item] > 0 ? 'var(--primary)' : 'var(--danger)';
@@ -667,28 +660,29 @@
         // ==========================================
         let dependentesCount = 0;
         function salvarRascunhoForm() {
-            const r = { nome: document.getElementById('cad-nome').value, idade: document.getElementById('cad-idade').value, sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value, telefone: document.getElementById('cad-telefone').value, dependentes: [] };
-            document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; r.dependentes.push({ nome: document.getElementById(`dep-nome-${id}`).value, idade: document.getElementById(`dep-idade-${id}`).value, sexo: document.getElementById(`dep-sexo-${id}`).value }); });
+            const r = { nome: document.getElementById('cad-nome').value, idade: document.getElementById('cad-idade').value, sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value, telefone: document.getElementById('cad-telefone').value, condicoes: document.getElementById('cad-condicoes').value, dependentes: [] };
+            document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; r.dependentes.push({ nome: document.getElementById(`dep-nome-${id}`).value, idade: document.getElementById(`dep-idade-${id}`).value, sexo: document.getElementById(`dep-sexo-${id}`).value, condicoes: document.getElementById(`dep-cond-${id}`).value }); });
             localStorage.setItem('rascunhoCadastro', JSON.stringify(r));
         }
         document.getElementById('form-cadastro').addEventListener('input', salvarRascunhoForm);
         
         function carregarRascunhoForm() {
             const s = localStorage.getItem('rascunhoCadastro'); if(!s) return; const r = JSON.parse(s);
-            document.getElementById('cad-nome').value = r.nome||''; document.getElementById('cad-idade').value = r.idade||''; document.getElementById('cad-sexo').value = r.sexo||'Masculino'; document.getElementById('cad-endereco').value = r.endereco||''; document.getElementById('cad-bairro').value = r.bairro||''; document.getElementById('cad-telefone').value = r.telefone||'';
-            r.dependentes.forEach(d => criarDependenteDOM(d.nome, d.idade, d.sexo));
+            document.getElementById('cad-nome').value = r.nome||''; document.getElementById('cad-idade').value = r.idade||''; document.getElementById('cad-sexo').value = r.sexo||'Masculino'; document.getElementById('cad-endereco').value = r.endereco||''; document.getElementById('cad-bairro').value = r.bairro||''; document.getElementById('cad-telefone').value = r.telefone||''; document.getElementById('cad-condicoes').value = r.condicoes||'';
+            r.dependentes.forEach(d => criarDependenteDOM(d.nome, d.idade, d.sexo, d.condicoes));
         }
-        function criarDependenteDOM(n = '', i = '', s = 'Masculino') {
+        function criarDependenteDOM(n = '', i = '', s = 'Masculino', c = '') {
             dependentesCount++; const div = document.createElement('div'); div.className = 'dependente-item'; div.id = `dep-${dependentesCount}`;
-            div.innerHTML = `<div><label>Nome</label><input type="text" id="dep-nome-${dependentesCount}" value="${n}" required></div><div><label>Idade</label><input type="number" id="dep-idade-${dependentesCount}" min="0" value="${i}" required></div><div><label>Sexo</label><select id="dep-sexo-${dependentesCount}"><option value="Masculino" ${s==='Masculino'?'selected':''}>M</option><option value="Feminino" ${s==='Feminino'?'selected':''}>F</option></select></div><button type="button" class="danger" onclick="this.parentElement.remove(); salvarRascunhoForm();">X</button>`;
+            div.innerHTML = `<div><label>Nome</label><input type="text" id="dep-nome-${dependentesCount}" value="${n}" required></div><div><label>Idade</label><input type="number" id="dep-idade-${dependentesCount}" min="0" value="${i}" required></div><div><label>Sexo</label><select id="dep-sexo-${dependentesCount}"><option value="Masculino" ${s==='Masculino'?'selected':''}>M</option><option value="Feminino" ${s==='Feminino'?'selected':''}>F</option></select></div><div><label>Condição (Opcional)</label><input type="text" id="dep-cond-${dependentesCount}" value="${c}" placeholder="Ex: Autista, Acamado..."></div><button type="button" class="danger" onclick="this.parentElement.remove(); salvarRascunhoForm();">X</button>`;
             document.getElementById('dependentes-list').appendChild(div);
         }
         document.getElementById('btn-add-dependente').addEventListener('click', () => { criarDependenteDOM(); salvarRascunhoForm(); });
 
         document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
             e.preventDefault(); const idR = document.getElementById('cad-idade').value;
-            const nf = { responsavel: { nome: document.getElementById('cad-nome').value.toUpperCase(), idade: idR, classificacao: classificarIdadePura(idR), sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value.toUpperCase(), telefone: document.getElementById('cad-telefone').value, data_cadastro: new Date().toISOString() }, dependentes: {} };
-            document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; const idD = document.getElementById(`dep-idade-${id}`).value; nf.dependentes[push(ref(db, 'temp')).key] = { nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), idade: idD, sexo: document.getElementById(`dep-sexo-${id}`).value, classificacao: classificarIdadePura(idD) }; });
+            const condR = document.getElementById('cad-condicoes').value.trim();
+            const nf = { responsavel: { nome: document.getElementById('cad-nome').value.toUpperCase(), idade: idR, classificacao: classificarIdadePura(idR), sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value.toUpperCase(), telefone: document.getElementById('cad-telefone').value, condicoes: condR, data_cadastro: new Date().toISOString() }, dependentes: {} };
+            document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; const idD = document.getElementById(`dep-idade-${id}`).value; const condD = document.getElementById(`dep-cond-${id}`).value.trim(); nf.dependentes[push(ref(db, 'temp')).key] = { nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), idade: idD, sexo: document.getElementById(`dep-sexo-${id}`).value, classificacao: classificarIdadePura(idD), condicoes: condD }; });
             await push(ref(db, 'cadastro'), nf); alert('Família cadastrada com sucesso!'); document.getElementById('form-cadastro').reset(); document.getElementById('dependentes-list').innerHTML = ''; localStorage.removeItem('rascunhoCadastro'); 
         });
 
@@ -706,8 +700,19 @@
         }
         function abrirModalFamilia(id) {
             familiaAtualId = id; const f = dadosFamiliasGlobais[id]; let dH = '';
-            if(f.dependentes) { dH = '<strong>Dependentes:</strong><ul>'; for(let k in f.dependentes) { const d = f.dependentes[k]; dH += `<li>${d.nome} - ${formatarIdade(d.idade)} - ${d.sexo}</li>`; } dH += '</ul>'; }
-            document.getElementById('detalhes-familia-header').innerHTML = `<h2 style="color: var(--primary); margin-bottom: 0.5rem;">${f.responsavel.nome}</h2><p><strong>Idade:</strong> ${formatarIdade(f.responsavel.idade)} | <strong>Sexo:</strong> ${f.responsavel.sexo}</p><p><strong>Endereço:</strong> ${f.responsavel.endereco}, ${f.responsavel.bairro} | <strong>Tel:</strong> ${f.responsavel.telefone}</p>${dH ? `<div style="margin-top: 1rem; background: #f9fafb; padding: 1rem; border-radius: 4px;">${dH}</div>` : ''}`;
+            if(f.dependentes) { 
+                dH = '<strong>Dependentes:</strong><ul style="margin-top:5px;">'; 
+                for(let k in f.dependentes) { 
+                    const d = f.dependentes[k]; 
+                    const tagCond = d.condicoes ? `<span style="color: #92400e; font-weight: bold; background: #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">⚠️ ${d.condicoes}</span>` : '';
+                    dH += `<li>${d.nome} - ${formatarIdade(d.idade)} - ${d.sexo} ${tagCond}</li>`; 
+                } 
+                dH += '</ul>'; 
+            }
+            
+            const respCond = f.responsavel.condicoes ? `<div style="color: #92400e; font-weight: bold; background: #fde68a; padding: 8px; border-radius: 4px; font-size: 0.9em; margin-top: 10px; display: inline-block;">⚠️ Necessidade Especial: ${f.responsavel.condicoes}</div>` : '';
+            
+            document.getElementById('detalhes-familia-header').innerHTML = `<h2 style="color: var(--primary); margin-bottom: 0.5rem;">${f.responsavel.nome}</h2><p><strong>Idade:</strong> ${formatarIdade(f.responsavel.idade)} | <strong>Sexo:</strong> ${f.responsavel.sexo}</p><p><strong>Endereço:</strong> ${f.responsavel.endereco}, ${f.responsavel.bairro} | <strong>Tel:</strong> ${f.responsavel.telefone}</p>${respCond}${dH ? `<div style="margin-top: 1rem; background: #f9fafb; padding: 1rem; border-radius: 4px;">${dH}</div>` : ''}`;
             atualizarHistoricoDOM(f.historico_ajuda); document.getElementById('modal-familia').style.display = 'flex';
         }
         function atualizarHistoricoDOM(h) {
@@ -788,7 +793,6 @@
             e.target.classList.add('active'); document.getElementById('view-users').classList.add('active');
         });
 
-        // Config Doação Filtro Admin
         document.getElementById('btn-novo-tipo-ajuda').addEventListener('click', async (e) => { e.preventDefault(); const n = prompt('Digite o nome do novo tipo de ajuda:'); if(n) await push(ref(db, 'configuracoes/tipos_ajuda'), n.trim()); });
         document.getElementById('btn-novo-prefiltro').addEventListener('click', async (e) => {
             e.preventDefault(); const n = prompt('Nome do Filtro (ex: Sapato Feminino):'); if(!n) return;
