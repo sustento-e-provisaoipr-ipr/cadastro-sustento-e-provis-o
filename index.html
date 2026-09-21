@@ -64,8 +64,9 @@
         .bairro-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
         .bairro-card span { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; overflow-y: auto; padding: 2rem 1rem; z-index: 1000;}
-        .modal-content { background: var(--white); padding: 2rem; border-radius: 8px; width: 100%; max-width: 800px; position: relative; }
+        /* MODIFICADO: Layout dos modais para rolagem perfeita no mobile */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: flex-start; justify-content: center; overflow-y: auto; padding: 1rem; z-index: 1000;}
+        .modal-content { background: var(--white); padding: 2rem; border-radius: 8px; width: 100%; max-width: 800px; position: relative; margin: auto; }
         .close-modal { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer; color: var(--text); background: none; border: none; width: auto; padding: 0; }
         
         .list-group { list-style: none; }
@@ -120,7 +121,7 @@
             <h2>Sistema de Auxílio</h2>
             <div class="form-group">
                 <label>Usuário</label>
-                <input type="text" id="login-user" placeholder="ex: au.costa">
+                <input type="text" id="login-user" placeholder="Digite seu usuário">
             </div>
             <div class="form-group">
                 <label>Senha</label>
@@ -465,13 +466,15 @@
                 await set(ref(db, 'configuracoes/pre_filtros'), { pf1: {nome: "Fralda Infantil (0-3 anos)", min: 0, max: 3, sexo: ""} });
             }
 
-            const sessionUser = sessionStorage.getItem('currentUser');
+            // MODIFICADO: Uso de localStorage para manter logado independente de fechar o navegador
+            const sessionUser = localStorage.getItem('currentUser');
             if(sessionUser) { currentUser = JSON.parse(sessionUser); iniciarSistema(); }
             carregarRascunhoForm();
         });
 
         document.getElementById('btn-login').addEventListener('click', async () => {
-            const user = document.getElementById('login-user').value.trim();
+            // MODIFICADO: .toLowerCase() garante login independente de maiúscula/minúscula
+            const user = document.getElementById('login-user').value.trim().toLowerCase();
             const pass = document.getElementById('login-pass').value.trim();
             const userId = user.replace(/\./g, '_'); 
 
@@ -484,7 +487,7 @@
                 } else {
                     currentUser.display_name = user;
                 }
-                sessionStorage.setItem('currentUser', JSON.stringify(currentUser)); 
+                localStorage.setItem('currentUser', JSON.stringify(currentUser)); 
                 iniciarSistema();
                 return;
             }
@@ -493,13 +496,13 @@
             if (userSnap.exists() && userSnap.val().senha === pass) {
                 currentUser = userSnap.val();
                 if(!currentUser.display_name) currentUser.display_name = currentUser.login;
-                sessionStorage.setItem('currentUser', JSON.stringify(currentUser)); 
+                localStorage.setItem('currentUser', JSON.stringify(currentUser)); 
                 iniciarSistema();
             } else { alert('Usuário ou senha incorretos!'); }
         });
 
         document.getElementById('btn-logout').addEventListener('click', () => {
-            sessionStorage.removeItem('currentUser');
+            localStorage.removeItem('currentUser');
             location.reload();
         });
 
@@ -568,7 +571,7 @@
             document.getElementById('user-display').innerText = novoNome;
             document.getElementById('header-avatar').src = novaFoto;
             document.getElementById('header-avatar').style.display = 'block';
-            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
             await update(ref(db, 'user_sistema/' + userId), { display_name: novoNome, foto: novaFoto });
             fecharModal('modal-perfil');
