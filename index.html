@@ -64,7 +64,11 @@
         .bairro-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
         .bairro-card span { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
 
-        /* MODIFICADO: Layout dos modais para rolagem perfeita no mobile */
+        /* Estilo dos itens de resultado da busca rápida */
+        .busca-item-resultado { padding: 9px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.15s; text-align: left; }
+        .busca-item-resultado:hover { background-color: #f1f5f9; }
+
+        /* Layout dos modais para rolagem perfeita no mobile */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: flex-start; justify-content: center; overflow-y: auto; padding: 1rem; z-index: 1000;}
         .modal-content { background: var(--white); padding: 2rem; border-radius: 8px; width: 100%; max-width: 800px; position: relative; margin: auto; }
         .close-modal { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer; color: var(--text); background: none; border: none; width: auto; padding: 0; }
@@ -186,7 +190,14 @@
 
             <!-- VIEW: FAMILIAS -->
             <div id="view-familias" class="view">
-                <h3 class="view-title">Famílias por Bairro</h3>
+                <div class="view-title">
+                    <h3 style="margin-bottom: 0;">Famílias por Bairro</h3>
+                    <!-- ESPAÇO DE BUSCA RÁPIDA -->
+                    <div style="position: relative; width: 100%; max-width: 350px;">
+                        <input type="text" id="busca-familia-input" placeholder="🔍 Buscar por nome ou telefone..." style="padding: 0.5rem 0.8rem; font-size: 0.9rem;" autocomplete="off">
+                        <div id="busca-familia-resultados" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; width: 100%; background: #ffffff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 260px; overflow-y: auto; z-index: 999;"></div>
+                    </div>
+                </div>
                 <div class="bairros-grid" id="bairros-container"></div>
             </div>
 
@@ -466,14 +477,14 @@
                 await set(ref(db, 'configuracoes/pre_filtros'), { pf1: {nome: "Fralda Infantil (0-3 anos)", min: 0, max: 3, sexo: ""} });
             }
 
-            // MODIFICADO: Uso de localStorage para manter logado independente de fechar o navegador
+            // Uso de localStorage para manter logado independente de fechar o navegador
             const sessionUser = localStorage.getItem('currentUser');
             if(sessionUser) { currentUser = JSON.parse(sessionUser); iniciarSistema(); }
             carregarRascunhoForm();
         });
 
         document.getElementById('btn-login').addEventListener('click', async () => {
-            // MODIFICADO: .toLowerCase() garante login independente de maiúscula/minúscula
+            // .toLowerCase() garante login independente de maiúscula/minúscula
             const user = document.getElementById('login-user').value.trim().toLowerCase();
             const pass = document.getElementById('login-pass').value.trim();
             const userId = user.replace(/\./g, '_'); 
@@ -519,6 +530,7 @@
             aplicarPermissoes();
             configurarFiltroDashboardPadrao();
             carregarDadosGerais();
+            configurarBuscaRapida();
             
             const firstVisible = document.querySelector('.nav-btn[style!="display: none;"]');
             if(firstVisible) firstVisible.click();
@@ -767,13 +779,87 @@
         });
 
         // ==========================================
-        // BAIRROS & MODAL FAMILIA
+        // BAIRROS & BUSCA RÁPIDA
         // ==========================================
         function renderizarFamilias() {
             const bAg = {}; for (let id in dadosFamiliasGlobais) { const fam = dadosFamiliasGlobais[id]; if(!bAg[fam.responsavel.bairro]) bAg[fam.responsavel.bairro] = []; bAg[fam.responsavel.bairro].push({ id, ...fam }); }
             const c = document.getElementById('bairros-container'); c.innerHTML = '';
             for (let b in bAg) { const div = document.createElement('div'); div.className = 'bairro-card'; div.innerHTML = `<h3>${b}</h3><span>${bAg[b].length} Família(s)</span>`; div.addEventListener('click', () => abrirModalLista(b, bAg[b])); c.appendChild(div); }
         }
+
+        function configurarBuscaRapida() {
+            const buscaInput = document.getElementById('busca-familia-input');
+            const buscaResultados = document.getElementById('busca-familia-resultados');
+
+            buscaInput.addEventListener('input', () => {
+                const termo = buscaInput.value.trim().toLowerCase();
+                if (!termo) {
+                    buscaResultados.style.display = 'none';
+                    buscaResultados.innerHTML = '';
+                    return;
+                }
+
+                const termoNumeros = termo.replace(/\D/g, '');
+                const matches = [];
+
+                for (let id in dadosFamiliasGlobais) {
+                    const f = dadosFamiliasGlobais[id];
+                    if (!f || !f.responsavel) continue;
+                    const nome = (f.responsavel.nome || '').toLowerCase();
+                    const tel = (f.responsavel.telefone || '').replace(/\D/g, '');
+
+                    const matchNome = nome.includes(termo);
+                    const matchTel = termoNumeros.length > 0 && tel.includes(termoNumeros);
+
+                    if (matchNome || matchTel) {
+                        matches.push({ id, ...f });
+                    }
+                }
+
+                if (matches.length === 0) {
+                    buscaResultados.innerHTML = '<div style="padding: 12px; font-size: 0.85rem; color: #888; text-align: center;">Nenhuma família encontrada.</div>';
+                    buscaResultados.style.display = 'block';
+                    return;
+                }
+
+                let html = '';
+                matches.slice(0, 15).forEach(m => {
+                    html += `
+                        <div class="busca-item-resultado" onclick="window.abrirFamiliaPelaBusca('${m.id}')">
+                            <div style="font-weight: bold; color: var(--primary); font-size: 0.95rem;">${m.responsavel.nome}</div>
+                            <div style="font-size: 0.8rem; color: #555;">📍 ${m.responsavel.bairro} | 📞 ${m.responsavel.telefone}</div>
+                        </div>
+                    `;
+                });
+                buscaResultados.innerHTML = html;
+                buscaResultados.style.display = 'block';
+            });
+
+            // Pressionar ENTER seleciona a primeira opção
+            buscaInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const primeiroItem = buscaResultados.querySelector('.busca-item-resultado');
+                    if (primeiroItem) primeiroItem.click();
+                }
+            });
+
+            // Fecha a listinha caso clique fora
+            document.addEventListener('click', (e) => {
+                if (!buscaInput.contains(e.target) && !buscaResultados.contains(e.target)) {
+                    buscaResultados.style.display = 'none';
+                }
+            });
+        }
+
+        window.abrirFamiliaPelaBusca = (id) => {
+            const buscaInput = document.getElementById('busca-familia-input');
+            const buscaResultados = document.getElementById('busca-familia-resultados');
+            buscaResultados.style.display = 'none';
+            buscaInput.value = '';
+            abrirModalFamilia(id);
+        };
+
         window.fecharModal = (id) => document.getElementById(id).style.display = 'none';
         
         window.abrirModalFamilia = (id) => {
