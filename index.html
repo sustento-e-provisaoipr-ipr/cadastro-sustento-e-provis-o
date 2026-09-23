@@ -38,6 +38,7 @@
         input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
         button { background: var(--primary); color: var(--white); border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; width: 100%; transition: 0.2s; }
         button:hover { background: var(--primary-hover); }
+        button:disabled { background: #9ca3af; cursor: not-allowed; } /* Estilo para botão desativado */
         button.secondary { background: var(--success); margin-top: 10px; }
         button.danger { background: var(--danger); width: auto; padding: 0.5rem 1rem; }
         button.admin-btn { background: var(--warning); color: #fff; }
@@ -64,11 +65,9 @@
         .bairro-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
         .bairro-card span { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
 
-        /* Estilo dos itens de resultado da busca rápida */
         .busca-item-resultado { padding: 9px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.15s; text-align: left; }
         .busca-item-resultado:hover { background-color: #f1f5f9; }
 
-        /* Layout dos modais para rolagem perfeita no mobile */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: flex-start; justify-content: center; overflow-y: auto; padding: 1rem; z-index: 1000;}
         .modal-content { background: var(--white); padding: 2rem; border-radius: 8px; width: 100%; max-width: 800px; position: relative; margin: auto; }
         .close-modal { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer; color: var(--text); background: none; border: none; width: auto; padding: 0; }
@@ -457,7 +456,7 @@
         let doacoesParceirosGlobais = {};
         let familiaAtualId = null;
         let currentUser = null;
-        let editandoFamiliaId = null; // Controle de edição
+        let editandoFamiliaId = null;
         
         let chartTiposInstance = null;
         let chartFamiliasInstance = null;
@@ -468,7 +467,7 @@
         function formatarDinheiro(val) { return parseFloat(val || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); }
 
         // ==========================================
-        // LOGIN E PROGRAMADORES IMORTAIS
+        // LOGIN
         // ==========================================
         window.addEventListener('DOMContentLoaded', async () => {
             const conf = await get(ref(db, 'configuracoes'));
@@ -477,14 +476,12 @@
                 await set(ref(db, 'configuracoes/pre_filtros'), { pf1: {nome: "Fralda Infantil (0-3 anos)", min: 0, max: 3, sexo: ""} });
             }
 
-            // Uso de localStorage para manter logado independente de fechar o navegador
             const sessionUser = localStorage.getItem('currentUser');
             if(sessionUser) { currentUser = JSON.parse(sessionUser); iniciarSistema(); }
             carregarRascunhoForm();
         });
 
         document.getElementById('btn-login').addEventListener('click', async () => {
-            // .toLowerCase() garante login independente de maiúscula/minúscula
             const user = document.getElementById('login-user').value.trim().toLowerCase();
             const pass = document.getElementById('login-pass').value.trim();
             const userId = user.replace(/\./g, '_'); 
@@ -532,7 +529,9 @@
             carregarDadosGerais();
             configurarBuscaRapida();
             
-            const firstVisible = document.querySelector('.nav-btn[style!="display: none;"]');
+            // CORREÇÃO: Substituído o seletor problemático por um filtro seguro em JS
+            const navBtns = Array.from(document.querySelectorAll('.nav-btn'));
+            const firstVisible = navBtns.find(btn => btn.style.display !== 'none');
             if(firstVisible) firstVisible.click();
         }
 
@@ -661,9 +660,16 @@
         });
 
         document.getElementById('form-cad-doador').addEventListener('submit', async (e) => {
-            e.preventDefault(); const nome = document.getElementById('cad-doador-nome').value.trim().toUpperCase();
-            await push(ref(db, 'doadores'), { nome: nome, tel: document.getElementById('cad-doador-tel').value, data_cad: new Date().toISOString() });
-            alert('Parceiro Cadastrado!'); e.target.reset(); document.querySelector('[data-sub="doador-lanc"]').click();
+            e.preventDefault(); 
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true; // CORREÇÃO: Evitar duplo envio
+            try {
+                const nome = document.getElementById('cad-doador-nome').value.trim().toUpperCase();
+                await push(ref(db, 'doadores'), { nome: nome, tel: document.getElementById('cad-doador-tel').value, data_cad: new Date().toISOString() });
+                alert('Parceiro Cadastrado!'); e.target.reset(); document.querySelector('[data-sub="doador-lanc"]').click();
+            } finally {
+                btn.disabled = false;
+            }
         });
 
         function preencherListaDoadores() {
@@ -673,17 +679,24 @@
 
         document.getElementById('form-lanc-doacao').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const nome = document.getElementById('lanc-doador-nome').value.toUpperCase();
-            let idDoador = Object.keys(dadosDoadoresGlobais).find(id => dadosDoadoresGlobais[id].nome === nome);
-            if(!idDoador) { alert('Doador não encontrado! Cadastre-o na aba "Novo Doador".'); return; }
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true; // CORREÇÃO: Evitar duplo envio
+            
+            try {
+                const nome = document.getElementById('lanc-doador-nome').value.toUpperCase();
+                let idDoador = Object.keys(dadosDoadoresGlobais).find(id => dadosDoadoresGlobais[id].nome === nome);
+                if(!idDoador) { alert('Doador não encontrado! Cadastre-o na aba "Novo Doador".'); return; }
 
-            await push(ref(db, 'doacoes_parceiros'), {
-                id_doador: idDoador, nome_doador: nome, data: document.getElementById('lanc-doacao-data').value,
-                item: document.getElementById('lanc-doacao-item').value, qtd: document.getElementById('lanc-doacao-qtd').value, valor: document.getElementById('lanc-doacao-valor').value,
-                user_lancamento: currentUser.login
-            });
-            alert('Doação registrada com sucesso!'); 
-            document.getElementById('lanc-doacao-qtd').value = '0'; document.getElementById('lanc-doacao-valor').value = '0.00'; document.getElementById('lanc-doador-nome').value = '';
+                await push(ref(db, 'doacoes_parceiros'), {
+                    id_doador: idDoador, nome_doador: nome, data: document.getElementById('lanc-doacao-data').value,
+                    item: document.getElementById('lanc-doacao-item').value, qtd: document.getElementById('lanc-doacao-qtd').value, valor: document.getElementById('lanc-doacao-valor').value,
+                    user_lancamento: currentUser.login
+                });
+                alert('Doação registrada com sucesso!'); 
+                document.getElementById('lanc-doacao-qtd').value = '0'; document.getElementById('lanc-doacao-valor').value = '0.00'; document.getElementById('lanc-doador-nome').value = '';
+            } finally {
+                btn.disabled = false;
+            }
         });
 
         function atualizarDashDoadores() {
@@ -700,7 +713,7 @@
         // ==========================================
         let dependentesCount = 0;
         function salvarRascunhoForm() {
-            if (editandoFamiliaId) return; // Não salvar rascunho enquanto edita
+            if (editandoFamiliaId) return;
             const r = { nome: document.getElementById('cad-nome').value, idade: document.getElementById('cad-idade').value, sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value, telefone: document.getElementById('cad-telefone').value, condicoes: document.getElementById('cad-condicoes').value, dependentes: [] };
             document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; r.dependentes.push({ nome: document.getElementById(`dep-nome-${id}`).value, idade: document.getElementById(`dep-idade-${id}`).value, sexo: document.getElementById(`dep-sexo-${id}`).value, condicoes: document.getElementById(`dep-cond-${id}`).value }); });
             localStorage.setItem('rascunhoCadastro', JSON.stringify(r));
@@ -761,28 +774,48 @@
         };
 
         document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
-            e.preventDefault(); const idR = document.getElementById('cad-idade').value;
-            const condR = document.getElementById('cad-condicoes').value.trim();
-            const nf = { responsavel: { nome: document.getElementById('cad-nome').value.toUpperCase(), idade: idR, classificacao: classificarIdadePura(idR), sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value.toUpperCase(), telefone: document.getElementById('cad-telefone').value, condicoes: condR, data_cadastro: editandoFamiliaId ? dadosFamiliasGlobais[editandoFamiliaId].responsavel.data_cadastro : new Date().toISOString() }, dependentes: {} };
+            e.preventDefault(); 
+            const btn = document.getElementById('btn-submit-cadastro');
+            btn.disabled = true; // CORREÇÃO: Evitar duplo envio
+            const txtOriginal = btn.innerText;
+            btn.innerText = 'Processando...';
             
-            document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; const idD = document.getElementById(`dep-idade-${id}`).value; const condD = document.getElementById(`dep-cond-${id}`).value.trim(); nf.dependentes[push(ref(db, 'temp')).key] = { nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), idade: idD, sexo: document.getElementById(`dep-sexo-${id}`).value, classificacao: classificarIdadePura(idD), condicoes: condD }; });
-            
-            if (editandoFamiliaId) {
-                await update(ref(db, 'cadastro/' + editandoFamiliaId), { responsavel: nf.responsavel, dependentes: nf.dependentes });
-                alert('Cadastro atualizado com sucesso!');
-            } else {
-                await push(ref(db, 'cadastro'), nf);
-                alert('Família cadastrada com sucesso!');
+            try {
+                const idR = document.getElementById('cad-idade').value;
+                const condR = document.getElementById('cad-condicoes').value.trim();
+                const nf = { responsavel: { nome: document.getElementById('cad-nome').value.toUpperCase(), idade: idR, classificacao: classificarIdadePura(idR), sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value.toUpperCase(), telefone: document.getElementById('cad-telefone').value, condicoes: condR, data_cadastro: editandoFamiliaId ? dadosFamiliasGlobais[editandoFamiliaId].responsavel.data_cadastro : new Date().toISOString() }, dependentes: {} };
+                
+                document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; const idD = document.getElementById(`dep-idade-${id}`).value; const condD = document.getElementById(`dep-cond-${id}`).value.trim(); nf.dependentes[push(ref(db, 'temp')).key] = { nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), idade: idD, sexo: document.getElementById(`dep-sexo-${id}`).value, classificacao: classificarIdadePura(idD), condicoes: condD }; });
+                
+                if (editandoFamiliaId) {
+                    await update(ref(db, 'cadastro/' + editandoFamiliaId), { responsavel: nf.responsavel, dependentes: nf.dependentes });
+                    alert('Cadastro atualizado com sucesso!');
+                } else {
+                    await push(ref(db, 'cadastro'), nf);
+                    alert('Família cadastrada com sucesso!');
+                }
+                
+                window.resetarFormCadastro(); 
+            } finally {
+                btn.disabled = false;
+                btn.innerText = txtOriginal;
             }
-            
-            window.resetarFormCadastro(); 
         });
 
         // ==========================================
         // BAIRROS & BUSCA RÁPIDA
         // ==========================================
         function renderizarFamilias() {
-            const bAg = {}; for (let id in dadosFamiliasGlobais) { const fam = dadosFamiliasGlobais[id]; if(!bAg[fam.responsavel.bairro]) bAg[fam.responsavel.bairro] = []; bAg[fam.responsavel.bairro].push({ id, ...fam }); }
+            const bAg = {}; 
+            for (let id in dadosFamiliasGlobais) { 
+                const fam = dadosFamiliasGlobais[id]; 
+                
+                // CORREÇÃO: Trava de segurança para registros corrompidos no banco
+                if (!fam || !fam.responsavel || !fam.responsavel.bairro) continue; 
+
+                if(!bAg[fam.responsavel.bairro]) bAg[fam.responsavel.bairro] = []; 
+                bAg[fam.responsavel.bairro].push({ id, ...fam }); 
+            }
             const c = document.getElementById('bairros-container'); c.innerHTML = '';
             for (let b in bAg) { const div = document.createElement('div'); div.className = 'bairro-card'; div.innerHTML = `<h3>${b}</h3><span>${bAg[b].length} Família(s)</span>`; div.addEventListener('click', () => abrirModalLista(b, bAg[b])); c.appendChild(div); }
         }
@@ -804,7 +837,9 @@
 
                 for (let id in dadosFamiliasGlobais) {
                     const f = dadosFamiliasGlobais[id];
+                    // CORREÇÃO: Segurança na busca
                     if (!f || !f.responsavel) continue;
+                    
                     const nome = (f.responsavel.nome || '').toLowerCase();
                     const tel = (f.responsavel.telefone || '').replace(/\D/g, '');
 
@@ -835,7 +870,6 @@
                 buscaResultados.style.display = 'block';
             });
 
-            // Pressionar ENTER seleciona a primeira opção
             buscaInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -844,7 +878,6 @@
                 }
             });
 
-            // Fecha a listinha caso clique fora
             document.addEventListener('click', (e) => {
                 if (!buscaInput.contains(e.target) && !buscaResultados.contains(e.target)) {
                     buscaResultados.style.display = 'none';
@@ -877,7 +910,6 @@
             
             const respCond = f.responsavel.condicoes ? `<div style="color: #92400e; font-weight: bold; background: #fde68a; padding: 8px; border-radius: 4px; font-size: 0.9em; margin-top: 10px; display: inline-block;">⚠️ Necessidade Especial: ${f.responsavel.condicoes}</div>` : '';
             
-            // Botão Editar inserido dinamicamente no título
             const btnEditar = currentUser.perm_cadastro ? `<button onclick="carregarFamiliaParaEdicao('${id}')" class="nav-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px; border-color:var(--warning); color:var(--warning);">✏️ Editar</button>` : '';
 
             document.getElementById('detalhes-familia-header').innerHTML = `
@@ -911,7 +943,6 @@
             const h = f?.historico_ajuda;
             const hD = document.getElementById('historico-lista'); hD.innerHTML = ''; 
             
-            // Área de Doações Fixas Ativas
             let fixasHTML = '';
             if(f.ajudas_fixas) {
                 for(let t in f.ajudas_fixas) {
@@ -922,12 +953,10 @@
                 hD.innerHTML = `<div style="margin-bottom:1rem; padding: 10px; border-left: 3px solid #0ea5e9; background: #f8fafc;"><strong>✅ Doações Fixas Ativas:</strong><br><div style="margin-top:5px;">${fixasHTML}</div></div>`;
             }
 
-            // Histórico normal
             if(!h) { hD.innerHTML += '<p>Nenhuma ajuda registrada no histórico.</p>'; return; }
             Object.keys(h).reverse().forEach(k => { const i = h[k]; hD.innerHTML += `<div class="historico-item"><strong style="color:var(--primary)">${i.tipo}</strong> (Qtd: ${i.qtd||1} | ${formatarDinheiro(i.valor)})<br><small>Data Ref: <b>${formatarDataBR(i.data_ref)}</b> | Lançado por: ${i.user_cadastro}</small><p style="margin-top:5px; font-size: 0.9rem;">${i.observacao}</p></div>`; });
         }
         
-        // Checkbox Recorrente lógica visual
         document.getElementById('ajuda-recorrente').addEventListener('change', (e) => {
             document.getElementById('ajuda-recorrente-dias-container').style.display = e.target.checked ? 'block' : 'none';
         });
@@ -936,26 +965,32 @@
         document.getElementById('form-ajuda').addEventListener('submit', async (e) => {
             e.preventDefault(); if(!familiaAtualId) return;
             
-            const tipoAjuda = document.getElementById('ajuda-tipo').value;
-            const dataRef = document.getElementById('ajuda-mes').value;
-            const isRecorrente = document.getElementById('ajuda-recorrente').checked;
-            const diasRecorrentes = parseInt(document.getElementById('ajuda-recorrente-dias').value) || 30;
-            const f = dadosFamiliasGlobais[familiaAtualId];
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true; // CORREÇÃO: Evitar duplo clique e duplicidade no banco
+            const txtOriginal = btn.innerText;
+            btn.innerText = 'Baixando...';
 
-            // Registra no histórico padrão
-            await push(ref(db, `cadastro/${familiaAtualId}/historico_ajuda`), { tipo: tipoAjuda, qtd: document.getElementById('ajuda-qtd').value, valor: document.getElementById('ajuda-valor').value, data_ref: dataRef, observacao: document.getElementById('ajuda-obs').value, timestamp: new Date().toISOString(), user_cadastro: currentUser.login }); 
-            
-            // Verifica Doação Fixa
-            if (isRecorrente) {
-                await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { intervalo_dias: diasRecorrentes, ultima_data: dataRef });
-            } else if (f.ajudas_fixas && f.ajudas_fixas[tipoAjuda]) {
-                // Se já era fixa, atualiza a data da última entrega automaticamente
-                await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { ultima_data: dataRef });
+            try {
+                const tipoAjuda = document.getElementById('ajuda-tipo').value;
+                const dataRef = document.getElementById('ajuda-mes').value;
+                const isRecorrente = document.getElementById('ajuda-recorrente').checked;
+                const diasRecorrentes = parseInt(document.getElementById('ajuda-recorrente-dias').value) || 30;
+                const f = dadosFamiliasGlobais[familiaAtualId];
+
+                await push(ref(db, `cadastro/${familiaAtualId}/historico_ajuda`), { tipo: tipoAjuda, qtd: document.getElementById('ajuda-qtd').value, valor: document.getElementById('ajuda-valor').value, data_ref: dataRef, observacao: document.getElementById('ajuda-obs').value, timestamp: new Date().toISOString(), user_cadastro: currentUser.login }); 
+                
+                if (isRecorrente) {
+                    await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { intervalo_dias: diasRecorrentes, ultima_data: dataRef });
+                } else if (f.ajudas_fixas && f.ajudas_fixas[tipoAjuda]) {
+                    await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { ultima_data: dataRef });
+                }
+
+                document.getElementById('ajuda-obs').value = ''; document.getElementById('ajuda-qtd').value = '1'; document.getElementById('ajuda-valor').value = '0.00';
+                document.getElementById('ajuda-recorrente').checked = false; document.getElementById('ajuda-recorrente-dias-container').style.display = 'none';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = txtOriginal;
             }
-
-            // Reset do formulário de ajuda
-            document.getElementById('ajuda-obs').value = ''; document.getElementById('ajuda-qtd').value = '1'; document.getElementById('ajuda-valor').value = '0.00';
-            document.getElementById('ajuda-recorrente').checked = false; document.getElementById('ajuda-recorrente-dias-container').style.display = 'none';
         });
 
         // ==========================================
@@ -969,12 +1004,14 @@
         function atualizarDashboard() {
             if(!document.getElementById('view-dashboard').classList.contains('active')) return;
             
-            // ALERTAS DE DOAÇÕES FIXAS (Lógica de 7 dias)
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             let alertasHTML = '';
 
             for(let id in dadosFamiliasGlobais) {
                 const fam = dadosFamiliasGlobais[id];
+                // CORREÇÃO: Segurança na leitura dos dados
+                if (!fam || !fam.responsavel) continue;
+
                 if(fam.ajudas_fixas) {
                     for(let tipo in fam.ajudas_fixas) {
                         const fixa = fam.ajudas_fixas[tipo];
@@ -987,7 +1024,6 @@
                         const diffTime = proxData - hoje;
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                        // Se faltar 7 dias ou menos (inclui atrasados)
                         if(diffDays <= 7) {
                             let cor = diffDays < 0 ? 'var(--danger)' : (diffDays === 0 ? 'var(--warning)' : '#0284c7');
                             let txtDias = diffDays < 0 ? `ATRASADO ${Math.abs(diffDays)} dia(s)` : (diffDays === 0 ? 'ENTREGAR HOJE!' : `Faltam ${diffDays} dia(s)`);
@@ -1008,12 +1044,17 @@
             }
             document.getElementById('dash-alertas-fixas').innerHTML = alertasHTML || '<div style="background:#f0fdf4; padding: 1rem; border-radius:4px; color:var(--success); border-left:4px solid var(--success);">Tudo em dia! Nenhum alerta para os próximos 7 dias.</div>';
 
-            // RESTANTE DO DASHBOARD (Histórico de Saídas)
             const dI = document.getElementById('dash-data-inicio').value, dF = document.getElementById('dash-data-fim').value, bF = document.getElementById('dash-bairro').value.toUpperCase(), nF = document.getElementById('dash-nome').value.toUpperCase();
             let tT = {}; let rF = {}; let fS = new Set(); let tr = '';
             for(let k in configGlobais.tipos_ajuda) tT[configGlobais.tipos_ajuda[k]] = 0;
             for(let id in dadosFamiliasGlobais) {
-                const fam = dadosFamiliasGlobais[id]; if(bF && !fam.responsavel.bairro.includes(bF)) continue; if(nF && !fam.responsavel.nome.includes(nF)) continue;
+                const fam = dadosFamiliasGlobais[id]; 
+                
+                // CORREÇÃO: Segurança na leitura dos dados do painel geral
+                if (!fam || !fam.responsavel || !fam.responsavel.bairro) continue; 
+                if(bF && !fam.responsavel.bairro.includes(bF)) continue; 
+                if(nF && !fam.responsavel.nome.includes(nF)) continue;
+                
                 if(fam.historico_ajuda) {
                     for(let hId in fam.historico_ajuda) {
                         const h = fam.historico_ajuda[hId]; if(dI && h.data_ref < dI) continue; if(dF && h.data_ref > dF) continue;
@@ -1086,7 +1127,12 @@
             const mi = parseInt(document.getElementById('filtro-idade-min').value) || 0; const ma = parseInt(document.getElementById('filtro-idade-max').value) || 150; const fs = document.getElementById('filtro-sexo').value;
             const res = [];
             for (let id in dadosFamiliasGlobais) {
-                const f = dadosFamiliasGlobais[id]; let p = []; const iR = parseInt(f.responsavel.idade);
+                const f = dadosFamiliasGlobais[id]; 
+                
+                // CORREÇÃO: Segurança na busca
+                if (!f || !f.responsavel) continue;
+                
+                let p = []; const iR = parseInt(f.responsavel.idade);
                 if(iR >= mi && iR <= ma && (!fs || f.responsavel.sexo === fs)) p.push(`${f.responsavel.nome} (Resp, ${iR} anos)`);
                 if(f.dependentes) { for(let k in f.dependentes) { const d = f.dependentes[k]; const iD = parseInt(d.idade); if(iD >= mi && iD <= ma && (!fs || d.sexo === fs)) p.push(`${d.nome} (Dep, ${iD} anos)`); } }
                 if(p.length > 0) res.push({ familiaId: id, responsavel: f.responsavel.nome, telefone: f.responsavel.telefone, bairro: f.responsavel.bairro, matches: p });
