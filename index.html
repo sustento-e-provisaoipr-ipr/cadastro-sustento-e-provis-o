@@ -38,7 +38,7 @@
         input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
         button { background: var(--primary); color: var(--white); border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; width: 100%; transition: 0.2s; }
         button:hover { background: var(--primary-hover); }
-        button:disabled { background: #9ca3af; cursor: not-allowed; } /* Estilo para botão desativado */
+        button:disabled { background: #9ca3af; cursor: not-allowed; } 
         button.secondary { background: var(--success); margin-top: 10px; }
         button.danger { background: var(--danger); width: auto; padding: 0.5rem 1rem; }
         button.admin-btn { background: var(--warning); color: #fff; }
@@ -57,7 +57,8 @@
         .form-grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
 
         #dependentes-list { margin-bottom: 1rem; }
-        .dependente-item { background: var(--bg); padding: 1rem; border-radius: 4px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 1.5fr 80px 100px 1.5fr auto; gap: 10px; align-items: end; }
+        /* MODIFICADO: Layout de grid para 6 colunas para caber o Parentesco */
+        .dependente-item { background: var(--bg); padding: 1rem; border-radius: 4px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 1.5fr 1fr 80px 100px 1.5fr auto; gap: 10px; align-items: end; }
 
         .bairros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
         .bairro-card { background: var(--bg); padding: 1.5rem; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); }
@@ -108,7 +109,7 @@
 
         @media (max-width: 768px) {
             .charts-grid, .historico-grid, .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
-            .dependente-item { grid-template-columns: 1fr; }
+            .dependente-item { grid-template-columns: 1fr; } /* No mobile empilha naturalmente */
             nav { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 10px; }
             main { padding: 1rem; }
             .dash-controls, .filter-grid, .alerta-item { flex-direction: column; align-items: stretch; gap: 10px;}
@@ -191,7 +192,6 @@
             <div id="view-familias" class="view">
                 <div class="view-title">
                     <h3 style="margin-bottom: 0;">Famílias por Bairro</h3>
-                    <!-- ESPAÇO DE BUSCA RÁPIDA -->
                     <div style="position: relative; width: 100%; max-width: 350px;">
                         <input type="text" id="busca-familia-input" placeholder="🔍 Buscar por nome ou telefone..." style="padding: 0.5rem 0.8rem; font-size: 0.9rem;" autocomplete="off">
                         <div id="busca-familia-resultados" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; width: 100%; background: #ffffff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 260px; overflow-y: auto; z-index: 999;"></div>
@@ -529,7 +529,6 @@
             carregarDadosGerais();
             configurarBuscaRapida();
             
-            // CORREÇÃO: Substituído o seletor problemático por um filtro seguro em JS
             const navBtns = Array.from(document.querySelectorAll('.nav-btn'));
             const firstVisible = navBtns.find(btn => btn.style.display !== 'none');
             if(firstVisible) firstVisible.click();
@@ -662,7 +661,7 @@
         document.getElementById('form-cad-doador').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true; // CORREÇÃO: Evitar duplo envio
+            btn.disabled = true; 
             try {
                 const nome = document.getElementById('cad-doador-nome').value.trim().toUpperCase();
                 await push(ref(db, 'doadores'), { nome: nome, tel: document.getElementById('cad-doador-tel').value, data_cad: new Date().toISOString() });
@@ -680,7 +679,7 @@
         document.getElementById('form-lanc-doacao').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true; // CORREÇÃO: Evitar duplo envio
+            btn.disabled = true; 
             
             try {
                 const nome = document.getElementById('lanc-doador-nome').value.toUpperCase();
@@ -715,7 +714,18 @@
         function salvarRascunhoForm() {
             if (editandoFamiliaId) return;
             const r = { nome: document.getElementById('cad-nome').value, idade: document.getElementById('cad-idade').value, sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value, telefone: document.getElementById('cad-telefone').value, condicoes: document.getElementById('cad-condicoes').value, dependentes: [] };
-            document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; r.dependentes.push({ nome: document.getElementById(`dep-nome-${id}`).value, idade: document.getElementById(`dep-idade-${id}`).value, sexo: document.getElementById(`dep-sexo-${id}`).value, condicoes: document.getElementById(`dep-cond-${id}`).value }); });
+            
+            // MODIFICADO: Salvar Parentesco no rascunho
+            document.querySelectorAll('.dependente-item').forEach(i => { 
+                const id = i.id.split('-')[1]; 
+                r.dependentes.push({ 
+                    nome: document.getElementById(`dep-nome-${id}`).value, 
+                    parentesco: document.getElementById(`dep-parentesco-${id}`).value,
+                    idade: document.getElementById(`dep-idade-${id}`).value, 
+                    sexo: document.getElementById(`dep-sexo-${id}`).value, 
+                    condicoes: document.getElementById(`dep-cond-${id}`).value 
+                }); 
+            });
             localStorage.setItem('rascunhoCadastro', JSON.stringify(r));
         }
         document.getElementById('form-cadastro').addEventListener('input', salvarRascunhoForm);
@@ -724,14 +734,35 @@
             if (editandoFamiliaId) return;
             const s = localStorage.getItem('rascunhoCadastro'); if(!s) return; const r = JSON.parse(s);
             document.getElementById('cad-nome').value = r.nome||''; document.getElementById('cad-idade').value = r.idade||''; document.getElementById('cad-sexo').value = r.sexo||'Masculino'; document.getElementById('cad-endereco').value = r.endereco||''; document.getElementById('cad-bairro').value = r.bairro||''; document.getElementById('cad-telefone').value = r.telefone||''; document.getElementById('cad-condicoes').value = r.condicoes||'';
-            r.dependentes.forEach(d => criarDependenteDOM(d.nome, d.idade, d.sexo, d.condicoes));
+            r.dependentes.forEach(d => criarDependenteDOM(d.nome, d.parentesco, d.idade, d.sexo, d.condicoes));
         }
         
-        function criarDependenteDOM(n = '', i = '', s = 'Masculino', c = '') {
+        // MODIFICADO: Função aprimorada com campo Parentesco (Select)
+        function criarDependenteDOM(n = '', p = 'Filho(a)', i = '', s = 'Masculino', c = '') {
             dependentesCount++; const div = document.createElement('div'); div.className = 'dependente-item'; div.id = `dep-${dependentesCount}`;
-            div.innerHTML = `<div><label>Nome</label><input type="text" id="dep-nome-${dependentesCount}" value="${n}" required></div><div><label>Idade</label><input type="number" id="dep-idade-${dependentesCount}" min="0" value="${i}" required></div><div><label>Sexo</label><select id="dep-sexo-${dependentesCount}"><option value="Masculino" ${s==='Masculino'?'selected':''}>M</option><option value="Feminino" ${s==='Feminino'?'selected':''}>F</option></select></div><div><label>Condição (Opcional)</label><input type="text" id="dep-cond-${dependentesCount}" value="${c}" placeholder="Ex: Autista, Acamado..."></div><button type="button" class="danger" onclick="this.parentElement.remove(); salvarRascunhoForm();">X</button>`;
+            div.innerHTML = `
+                <div><label>Nome</label><input type="text" id="dep-nome-${dependentesCount}" value="${n}" required></div>
+                <div><label>Parentesco</label>
+                    <select id="dep-parentesco-${dependentesCount}">
+                        <option value="Filho(a)" ${p==='Filho(a)'?'selected':''}>Filho(a)</option>
+                        <option value="Cônjuge" ${p==='Cônjuge'?'selected':''}>Cônjuge</option>
+                        <option value="Irmão(ã)" ${p==='Irmão(ã)'?'selected':''}>Irmão(ã)</option>
+                        <option value="Neto(a)" ${p==='Neto(a)'?'selected':''}>Neto(a)</option>
+                        <option value="Sobrinho(a)" ${p==='Sobrinho(a)'?'selected':''}>Sobrinho(a)</option>
+                        <option value="Genro/Nora" ${p==='Genro/Nora'?'selected':''}>Genro/Nora</option>
+                        <option value="Sogro(a)" ${p==='Sogro(a)'?'selected':''}>Sogro(a)</option>
+                        <option value="Enteado(a)" ${p==='Enteado(a)'?'selected':''}>Enteado(a)</option>
+                        <option value="Outro" ${p==='Outro'?'selected':''}>Outro</option>
+                    </select>
+                </div>
+                <div><label>Idade</label><input type="number" id="dep-idade-${dependentesCount}" min="0" value="${i}" required></div>
+                <div><label>Sexo</label><select id="dep-sexo-${dependentesCount}"><option value="Masculino" ${s==='Masculino'?'selected':''}>M</option><option value="Feminino" ${s==='Feminino'?'selected':''}>F</option></select></div>
+                <div><label>Condição (Opcional)</label><input type="text" id="dep-cond-${dependentesCount}" value="${c}" placeholder="Ex: Autista..."></div>
+                <button type="button" class="danger" onclick="this.parentElement.remove(); salvarRascunhoForm();">X</button>
+            `;
             document.getElementById('dependentes-list').appendChild(div);
         }
+
         document.getElementById('btn-add-dependente').addEventListener('click', () => { criarDependenteDOM(); salvarRascunhoForm(); });
 
         window.resetarFormCadastro = (voltarParaRascunho = false) => {
@@ -761,7 +792,8 @@
             if(f.dependentes) {
                 for(let k in f.dependentes) {
                     const d = f.dependentes[k];
-                    criarDependenteDOM(d.nome, d.idade, d.sexo, d.condicoes);
+                    // Trazendo dados com compatibilidade caso cadastro seja antigo e não tenha parentesco ainda
+                    criarDependenteDOM(d.nome, d.parentesco || 'Outro', d.idade, d.sexo, d.condicoes);
                 }
             }
             
@@ -776,7 +808,7 @@
         document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             const btn = document.getElementById('btn-submit-cadastro');
-            btn.disabled = true; // CORREÇÃO: Evitar duplo envio
+            btn.disabled = true; 
             const txtOriginal = btn.innerText;
             btn.innerText = 'Processando...';
             
@@ -785,7 +817,20 @@
                 const condR = document.getElementById('cad-condicoes').value.trim();
                 const nf = { responsavel: { nome: document.getElementById('cad-nome').value.toUpperCase(), idade: idR, classificacao: classificarIdadePura(idR), sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value.toUpperCase(), telefone: document.getElementById('cad-telefone').value, condicoes: condR, data_cadastro: editandoFamiliaId ? dadosFamiliasGlobais[editandoFamiliaId].responsavel.data_cadastro : new Date().toISOString() }, dependentes: {} };
                 
-                document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; const idD = document.getElementById(`dep-idade-${id}`).value; const condD = document.getElementById(`dep-cond-${id}`).value.trim(); nf.dependentes[push(ref(db, 'temp')).key] = { nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), idade: idD, sexo: document.getElementById(`dep-sexo-${id}`).value, classificacao: classificarIdadePura(idD), condicoes: condD }; });
+                document.querySelectorAll('.dependente-item').forEach(i => { 
+                    const id = i.id.split('-')[1]; 
+                    const idD = document.getElementById(`dep-idade-${id}`).value; 
+                    const condD = document.getElementById(`dep-cond-${id}`).value.trim(); 
+                    const parD = document.getElementById(`dep-parentesco-${id}`).value; // MODIFICADO: Capta Parentesco
+                    nf.dependentes[push(ref(db, 'temp')).key] = { 
+                        nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), 
+                        parentesco: parD, 
+                        idade: idD, 
+                        sexo: document.getElementById(`dep-sexo-${id}`).value, 
+                        classificacao: classificarIdadePura(idD), 
+                        condicoes: condD 
+                    }; 
+                });
                 
                 if (editandoFamiliaId) {
                     await update(ref(db, 'cadastro/' + editandoFamiliaId), { responsavel: nf.responsavel, dependentes: nf.dependentes });
@@ -809,10 +854,7 @@
             const bAg = {}; 
             for (let id in dadosFamiliasGlobais) { 
                 const fam = dadosFamiliasGlobais[id]; 
-                
-                // CORREÇÃO: Trava de segurança para registros corrompidos no banco
                 if (!fam || !fam.responsavel || !fam.responsavel.bairro) continue; 
-
                 if(!bAg[fam.responsavel.bairro]) bAg[fam.responsavel.bairro] = []; 
                 bAg[fam.responsavel.bairro].push({ id, ...fam }); 
             }
@@ -837,7 +879,6 @@
 
                 for (let id in dadosFamiliasGlobais) {
                     const f = dadosFamiliasGlobais[id];
-                    // CORREÇÃO: Segurança na busca
                     if (!f || !f.responsavel) continue;
                     
                     const nome = (f.responsavel.nome || '').toLowerCase();
@@ -903,7 +944,11 @@
                 for(let k in f.dependentes) { 
                     const d = f.dependentes[k]; 
                     const tagCond = d.condicoes ? `<span style="color: #92400e; font-weight: bold; background: #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">⚠️ ${d.condicoes}</span>` : '';
-                    dH += `<li>${d.nome} - ${formatarIdade(d.idade)} - ${d.sexo} ${tagCond}</li>`; 
+                    
+                    // MODIFICADO: Mostra o parentesco no modal de listagem
+                    const txtPar = d.parentesco ? `<span style="color:#6b7280; font-size:0.9em; margin-left:4px;">(${d.parentesco})</span>` : '';
+                    
+                    dH += `<li>${d.nome} ${txtPar} - ${formatarIdade(d.idade)} - ${d.sexo} ${tagCond}</li>`; 
                 } 
                 dH += '</ul>'; 
             }
@@ -966,7 +1011,7 @@
             e.preventDefault(); if(!familiaAtualId) return;
             
             const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true; // CORREÇÃO: Evitar duplo clique e duplicidade no banco
+            btn.disabled = true; 
             const txtOriginal = btn.innerText;
             btn.innerText = 'Baixando...';
 
@@ -1009,7 +1054,6 @@
 
             for(let id in dadosFamiliasGlobais) {
                 const fam = dadosFamiliasGlobais[id];
-                // CORREÇÃO: Segurança na leitura dos dados
                 if (!fam || !fam.responsavel) continue;
 
                 if(fam.ajudas_fixas) {
@@ -1050,7 +1094,6 @@
             for(let id in dadosFamiliasGlobais) {
                 const fam = dadosFamiliasGlobais[id]; 
                 
-                // CORREÇÃO: Segurança na leitura dos dados do painel geral
                 if (!fam || !fam.responsavel || !fam.responsavel.bairro) continue; 
                 if(bF && !fam.responsavel.bairro.includes(bF)) continue; 
                 if(nF && !fam.responsavel.nome.includes(nF)) continue;
@@ -1129,12 +1172,18 @@
             for (let id in dadosFamiliasGlobais) {
                 const f = dadosFamiliasGlobais[id]; 
                 
-                // CORREÇÃO: Segurança na busca
                 if (!f || !f.responsavel) continue;
                 
                 let p = []; const iR = parseInt(f.responsavel.idade);
                 if(iR >= mi && iR <= ma && (!fs || f.responsavel.sexo === fs)) p.push(`${f.responsavel.nome} (Resp, ${iR} anos)`);
-                if(f.dependentes) { for(let k in f.dependentes) { const d = f.dependentes[k]; const iD = parseInt(d.idade); if(iD >= mi && iD <= ma && (!fs || d.sexo === fs)) p.push(`${d.nome} (Dep, ${iD} anos)`); } }
+                if(f.dependentes) { 
+                    for(let k in f.dependentes) { 
+                        const d = f.dependentes[k]; 
+                        const iD = parseInt(d.idade); 
+                        // MODIFICADO: Passa a mostrar o parentesco no resultado da busca
+                        if(iD >= mi && iD <= ma && (!fs || d.sexo === fs)) p.push(`${d.nome} (${d.parentesco || 'Dep'}, ${iD} anos)`); 
+                    } 
+                }
                 if(p.length > 0) res.push({ familiaId: id, responsavel: f.responsavel.nome, telefone: f.responsavel.telefone, bairro: f.responsavel.bairro, matches: p });
             }
             const rD = document.getElementById('resultados-doacao'); if(res.length === 0) { rD.innerHTML = '<p>Nenhuma família encontrada.</p>'; return; }
