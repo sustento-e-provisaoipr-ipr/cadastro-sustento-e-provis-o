@@ -57,7 +57,6 @@
         .form-grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
 
         #dependentes-list { margin-bottom: 1rem; }
-        /* MODIFICADO: Layout de grid para 6 colunas para caber o Parentesco */
         .dependente-item { background: var(--bg); padding: 1rem; border-radius: 4px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 1.5fr 1fr 80px 100px 1.5fr auto; gap: 10px; align-items: end; }
 
         .bairros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
@@ -107,9 +106,13 @@
         .alerta-item { background: #fff; border-left: 4px solid var(--warning); padding: 1rem; border-radius: 4px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .alerta-item:hover { background: #f8fafc; }
 
+        /* Classes de Alerta de Estoque Fracionado */
+        .estoque-zerado { background-color: #fee2e2 !important; color: #991b1b; } 
+        .estoque-baixo { background-color: #ffedd5 !important; color: #9a3412; } 
+
         @media (max-width: 768px) {
             .charts-grid, .historico-grid, .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
-            .dependente-item { grid-template-columns: 1fr; } /* No mobile empilha naturalmente */
+            .dependente-item { grid-template-columns: 1fr; }
             nav { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 10px; }
             main { padding: 1rem; }
             .dash-controls, .filter-grid, .alerta-item { flex-direction: column; align-items: stretch; gap: 10px;}
@@ -146,6 +149,10 @@
                 <button class="nav-btn" data-target="view-match" data-perm="menu_doacoes">Doações (Filtro)</button>
                 <button class="nav-btn" data-target="view-dashboard" data-perm="menu_dashboard">📊 Dashboard</button>
                 <button class="nav-btn admin-btn" id="btn-menu-users" data-target="view-users" style="display:none;">Cadastrar User</button>
+                
+                <!-- NOVO BOTÃO: ESTOQUE FRACIONADO -->
+                <button class="nav-btn" data-target="view-fracionado" data-perm="menu_fracionado">Estoque Fracionado</button>
+                
                 <button id="btn-logout" class="danger" style="margin-left: 10px;">Sair</button>
             </nav>
             
@@ -262,6 +269,71 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- VIEW: NOVO MÓDULO ESTOQUE FRACIONADO -->
+            <div id="view-fracionado" class="view">
+                <div class="sub-nav">
+                    <button class="nav-btn active" data-sub="frac-estoque">Estoque de Produtos</button>
+                    <button class="nav-btn" data-sub="frac-modelo">Modelo da Cesta</button>
+                    <button class="nav-btn" data-sub="frac-gerar">Gerar Cestas</button>
+                </div>
+
+                <!-- Sub View: Estoque Fracionado de Produtos -->
+                <div id="frac-estoque" class="sub-view active">
+                    <h3 class="view-title">Gerenciar Estoque Fracionado</h3>
+                    <form id="form-add-frac">
+                        <div class="form-grid-2">
+                            <div class="form-group"><label>Nome do Produto (ex: Arroz 5kg)</label><input type="text" id="frac-nome" required></div>
+                            <div class="form-group"><label>Quantidade a Adicionar no Estoque</label><input type="number" id="frac-qtd" value="1" min="1" required></div>
+                        </div>
+                        <button type="submit" class="secondary" style="width: auto;">+ Adicionar ao Estoque</button>
+                    </form>
+                    <div class="table-responsive" style="margin-top: 2rem;">
+                        <table>
+                            <thead><tr><th>Produto</th><th>Estoque Atual</th><th>Ações</th></tr></thead>
+                            <tbody id="tabela-frac-estoque"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub View: Modelo da Cesta -->
+                <div id="frac-modelo" class="sub-view">
+                    <h3 class="view-title">O que vai em uma Cesta Básica?</h3>
+                    <form id="form-add-modelo">
+                        <div class="form-grid-2">
+                            <div class="form-group"><label>Produto do Estoque Fracionado</label><select id="modelo-produto" required></select></div>
+                            <div class="form-group"><label>Quantidade necessária por 1 Cesta</label><input type="number" id="modelo-qtd" value="1" min="1" required></div>
+                        </div>
+                        <button type="submit" class="secondary" style="width: auto;">Adicionar à Receita da Cesta</button>
+                    </form>
+                    <div class="table-responsive" style="margin-top: 2rem;">
+                        <table>
+                            <thead><tr><th>Produto na Cesta</th><th>Qtd Necessária (para 1 Cesta)</th><th>Ações</th></tr></thead>
+                            <tbody id="tabela-frac-modelo"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub View: Gerar Cestas -->
+                <div id="frac-gerar" class="sub-view">
+                    <h3 class="view-title">Gerar Cestas Básicas Prontas</h3>
+                    <div class="form-grid-3">
+                        <div class="form-group"><label>Quantas Cestas deseja montar?</label><input type="number" id="gerar-qtd-cestas" value="1" min="1" required></div>
+                        <div class="form-group">
+                            <label>Doador (Responsável pela montagem)</label>
+                            <input type="text" id="gerar-doador" list="lista-doadores" placeholder="Digite para buscar..." required autocomplete="off">
+                        </div>
+                        <div class="form-group"><label>Data da Montagem</label><input type="date" id="gerar-data" required></div>
+                    </div>
+                    <button type="button" id="btn-simular-gerar" style="margin-bottom: 1.5rem; background: var(--primary);">🔍 Verificar Disponibilidade</button>
+
+                    <div id="gerar-log" style="background: #f9fafb; padding: 1rem; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 1.5rem;">
+                        <em>Preencha a quantidade e clique em Verificar Disponibilidade.</em>
+                    </div>
+
+                    <button type="button" id="btn-confirmar-gerar" class="secondary" disabled>✅ Confirmar Montagem e Enviar para Estoque Principal</button>
+                </div>
+            </div>
 
             <!-- VIEW: FILTRO DE DOAÇÕES -->
             <div id="view-match" class="view">
@@ -340,6 +412,7 @@
                             <label><input type="checkbox" id="perm-cadastro" checked> Cadastro</label>
                             <label><input type="checkbox" id="perm-familias" checked> Famílias</label>
                             <label><input type="checkbox" id="perm-doadores" checked> Doadores</label>
+                            <label><input type="checkbox" id="perm-fracionado" checked> Estoque Fracionado</label>
                             <label><input type="checkbox" id="perm-doacoes" checked> Filtro Doações</label>
                             <label><input type="checkbox" id="perm-dashboard"> Dashboard</label>
                             <label><input type="checkbox" id="perm-admin"> Administrador</label>
@@ -454,6 +527,8 @@
         let configGlobais = { tipos_ajuda: {}, pre_filtros: {} };
         let dadosDoadoresGlobais = {};
         let doacoesParceirosGlobais = {};
+        let estoqueFracionado = {}; // NOVO: Controle de Itens Soltos
+        let modeloCesta = {};       // NOVO: Receita da Cesta
         let familiaAtualId = null;
         let currentUser = null;
         let editandoFamiliaId = null;
@@ -487,7 +562,7 @@
             const userId = user.replace(/\./g, '_'); 
 
             if ((user === 'au.costa' || user === 'de.costa') && pass === '80605276') {
-                currentUser = { login: user, role: 'admin', perm_cadastro: true, perm_familias: true, perm_doacoes: true, perm_dashboard: true, perm_doadores: true };
+                currentUser = { login: user, role: 'admin', perm_cadastro: true, perm_familias: true, perm_doacoes: true, perm_dashboard: true, perm_doadores: true, perm_fracionado: true };
                 const s = await get(ref(db, 'user_sistema/' + userId));
                 if(s.exists()) { 
                     currentUser.display_name = s.val().display_name || user;
@@ -529,7 +604,9 @@
             carregarDadosGerais();
             configurarBuscaRapida();
             
-            const navBtns = Array.from(document.querySelectorAll('.nav-btn'));
+            document.getElementById('gerar-data').valueAsDate = new Date();
+            
+            const navBtns = Array.from(document.querySelectorAll('#main-nav .nav-btn'));
             const firstVisible = navBtns.find(btn => btn.style.display !== 'none');
             if(firstVisible) firstVisible.click();
         }
@@ -540,6 +617,7 @@
             document.querySelector('[data-target="view-cadastro"]').style.display = currentUser.perm_cadastro ? 'inline-block' : 'none';
             document.querySelector('[data-target="view-familias"]').style.display = currentUser.perm_familias ? 'inline-block' : 'none';
             document.querySelector('[data-target="view-doadores"]').style.display = currentUser.perm_doadores ? 'inline-block' : 'none';
+            document.querySelector('[data-target="view-fracionado"]').style.display = currentUser.perm_fracionado ? 'inline-block' : 'none';
             document.querySelector('[data-target="view-match"]').style.display = currentUser.perm_doacoes ? 'inline-block' : 'none';
             document.querySelector('[data-target="view-dashboard"]').style.display = currentUser.perm_dashboard ? 'inline-block' : 'none';
         }
@@ -588,7 +666,7 @@
         });
 
         // ==========================================
-        // CARREGAMENTO DE DADOS (REALTIME) E ESTOQUE
+        // CARREGAMENTO DE DADOS (REALTIME)
         // ==========================================
         function carregarDadosGerais() {
             onValue(ref(db, 'cadastro'), (s) => { 
@@ -601,6 +679,17 @@
             onValue(ref(db, 'doadores'), (s) => { dadosDoadoresGlobais = s.val() || {}; preencherListaDoadores(); });
             onValue(ref(db, 'doacoes_parceiros'), (s) => { doacoesParceirosGlobais = s.val() || {}; atualizarDashDoadores(); calcularEstoqueReal(); });
             
+            // NOVO: Listeners do Fracionado
+            onValue(ref(db, 'estoque_fracionado/produtos'), (s) => {
+                estoqueFracionado = s.val() || {};
+                atualizarTabelaFracionado();
+                preencherSelectModeloCesta();
+            });
+            onValue(ref(db, 'estoque_fracionado/modelo'), (s) => {
+                modeloCesta = s.val() || {};
+                atualizarTabelaModelo();
+            });
+
             if(currentUser.role === 'admin') onValue(ref(db, 'user_sistema'), (s) => renderizarUsuariosAdmin(s.val() || {}));
             document.getElementById('ajuda-mes').valueAsDate = new Date(); document.getElementById('lanc-doacao-data').valueAsDate = new Date();
         }
@@ -646,6 +735,208 @@
             document.getElementById('dash-estoque-geral').innerHTML = htmlEstoque || '<p>Estoque Vazio.</p>';
             document.getElementById('estoque-doadores-container').innerHTML = htmlEstoque || '<p>Estoque Vazio.</p>';
         }
+
+        // ==========================================
+        // NOVO: MÓDULO ESTOQUE FRACIONADO E MONTAGEM
+        // ==========================================
+        document.querySelectorAll('#view-fracionado .sub-nav .nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('#view-fracionado .sub-nav .nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#view-fracionado .sub-view').forEach(v => v.classList.remove('active'));
+                e.target.classList.add('active'); document.getElementById(e.target.dataset.sub).classList.add('active');
+            });
+        });
+
+        // Add Produto Fracionado
+        document.getElementById('form-add-frac').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button'); btn.disabled = true;
+            try {
+                const nome = document.getElementById('frac-nome').value.trim().toUpperCase();
+                const qtdAdicionar = parseFloat(document.getElementById('frac-qtd').value);
+                
+                let prodId = Object.keys(estoqueFracionado).find(id => estoqueFracionado[id].nome === nome);
+                if (prodId) {
+                    const novaQtd = parseFloat(estoqueFracionado[prodId].qtd) + qtdAdicionar;
+                    await update(ref(db, `estoque_fracionado/produtos/${prodId}`), { qtd: novaQtd });
+                } else {
+                    await push(ref(db, 'estoque_fracionado/produtos'), { nome, qtd: qtdAdicionar });
+                }
+                document.getElementById('form-add-frac').reset(); document.getElementById('frac-qtd').value = 1;
+            } finally { btn.disabled = false; }
+        });
+
+        function atualizarTabelaFracionado() {
+            const tb = document.getElementById('tabela-frac-estoque'); tb.innerHTML = '';
+            const chaves = Object.keys(estoqueFracionado);
+            if(chaves.length === 0) { tb.innerHTML = '<tr><td colspan="3" align="center" style="padding:1rem;">Nenhum produto cadastrado no estoque fracionado.</td></tr>'; return; }
+            
+            chaves.forEach(id => {
+                const p = estoqueFracionado[id];
+                const qtd = parseFloat(p.qtd);
+                let classeEst = '';
+                if (qtd === 0) classeEst = 'estoque-zerado';
+                else if (qtd <= 5) classeEst = 'estoque-baixo';
+
+                tb.innerHTML += `<tr class="${classeEst}">
+                    <td style="font-weight:bold;">${p.nome}</td>
+                    <td>${qtd} un.</td>
+                    <td>
+                        <button class="nav-btn" style="padding:2px 8px; font-size:0.8rem; margin-right:5px; border-color:#6b7280; color:#374151; background:#fff;" onclick="ajustarQtdFrac('${id}')">✏️ Ajustar</button>
+                        <button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="removerFrac('${id}')">X</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        
+        window.ajustarQtdFrac = async (id) => {
+            const p = estoqueFracionado[id];
+            const nova = prompt(`Defina a quantidade EXATA (atual = ${p.qtd}) para o produto: ${p.nome}`, p.qtd);
+            if(nova !== null && nova.trim() !== '') {
+                await update(ref(db, `estoque_fracionado/produtos/${id}`), { qtd: parseFloat(nova) });
+            }
+        };
+        window.removerFrac = async (id) => {
+            if(confirm('Tem certeza que deseja remover este produto do estoque fracionado?')) {
+                await remove(ref(db, `estoque_fracionado/produtos/${id}`));
+            }
+        };
+
+        // Modelo da Cesta
+        function preencherSelectModeloCesta() {
+            const sel = document.getElementById('modelo-produto'); sel.innerHTML = '';
+            Object.values(estoqueFracionado).forEach(p => { sel.innerHTML += `<option value="${p.nome}">${p.nome}</option>`; });
+        }
+
+        document.getElementById('form-add-modelo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button'); btn.disabled = true;
+            try {
+                const nome = document.getElementById('modelo-produto').value;
+                const qtd = parseFloat(document.getElementById('modelo-qtd').value);
+                if(!nome) { alert('Você precisa cadastrar itens no estoque fracionado primeiro.'); return; }
+                
+                let idProd = Object.keys(modeloCesta).find(id => modeloCesta[id].nome === nome);
+                if (idProd) {
+                    await update(ref(db, `estoque_fracionado/modelo/${idProd}`), { qtd: qtd });
+                } else {
+                    await push(ref(db, 'estoque_fracionado/modelo'), { nome, qtd });
+                }
+                document.getElementById('modelo-qtd').value = 1;
+            } finally { btn.disabled = false; }
+        });
+
+        function atualizarTabelaModelo() {
+            const tb = document.getElementById('tabela-frac-modelo'); tb.innerHTML = '';
+            const chaves = Object.keys(modeloCesta);
+            if(chaves.length === 0) { tb.innerHTML = '<tr><td colspan="3" align="center" style="padding:1rem;">Nenhum item na receita da cesta.</td></tr>'; return; }
+            
+            chaves.forEach(id => {
+                const p = modeloCesta[id];
+                tb.innerHTML += `<tr>
+                    <td style="font-weight:bold; color:var(--primary);">${p.nome}</td>
+                    <td>${p.qtd} unidade(s) por Cesta</td>
+                    <td>
+                        <button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="removerItemModelo('${id}')">Remover</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        window.removerItemModelo = async (id) => {
+            if(confirm('Remover este item da Cesta Básica?')) {
+                await remove(ref(db, `estoque_fracionado/modelo/${id}`));
+            }
+        };
+
+        // Simular e Gerar
+        document.getElementById('btn-simular-gerar').addEventListener('click', () => {
+            const qtdCestas = parseInt(document.getElementById('gerar-qtd-cestas').value) || 0;
+            const logDiv = document.getElementById('gerar-log');
+            if (qtdCestas <= 0) return;
+
+            if (Object.keys(modeloCesta).length === 0) {
+                logDiv.innerHTML = '<span style="color:var(--danger); font-weight:bold;">⚠️ Você precisa definir os itens da Cesta na aba "Modelo da Cesta" primeiro.</span>';
+                return;
+            }
+
+            let isPossivel = true;
+            let logHtml = `<h4 style="margin-bottom:10px;">Simulação para gerar ${qtdCestas} Cesta(s):</h4><ul style="list-style:none; padding:0; margin:0;">`;
+
+            for (let key in modeloCesta) {
+                const itemModelo = modeloCesta[key];
+                const qtdNecessaria = itemModelo.qtd * qtdCestas;
+
+                let prodKey = Object.keys(estoqueFracionado).find(k => estoqueFracionado[k].nome === itemModelo.nome);
+                let qtdEstoque = prodKey ? parseFloat(estoqueFracionado[prodKey].qtd) : 0;
+
+                if (qtdEstoque >= qtdNecessaria) {
+                    logHtml += `<li style="color: var(--success); margin-bottom:8px; padding:5px; border-bottom:1px solid #e5e7eb;">
+                        ✔️ <b>${itemModelo.nome}:</b> Necessita ${qtdNecessaria} | Tem ${qtdEstoque}
+                    </li>`;
+                } else {
+                    isPossivel = false;
+                    let falta = qtdNecessaria - qtdEstoque;
+                    logHtml += `<li style="color: var(--danger); margin-bottom:8px; padding:5px; border-bottom:1px solid #e5e7eb; background:#fee2e2; border-radius:4px;">
+                        ❌ <b>${itemModelo.nome}:</b> Necessita ${qtdNecessaria} | Tem ${qtdEstoque} <br><small style="font-weight:bold;">(Faltam + ${falta} unidade(s))</small>
+                    </li>`;
+                }
+            }
+            logHtml += '</ul>';
+            logDiv.innerHTML = logHtml;
+            document.getElementById('btn-confirmar-gerar').disabled = !isPossivel;
+        });
+
+        document.getElementById('btn-confirmar-gerar').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-confirmar-gerar');
+            btn.disabled = true; btn.innerText = 'Processando...';
+
+            try {
+                const qtdCestas = parseInt(document.getElementById('gerar-qtd-cestas').value);
+                const nomeDoador = document.getElementById('gerar-doador').value.toUpperCase();
+                const dataRef = document.getElementById('gerar-data').value;
+                
+                if(!nomeDoador) {
+                    alert('Por favor, informe quem está doando/montando essas cestas.');
+                    btn.disabled = false; btn.innerText = '✅ Confirmar Montagem e Enviar para Estoque Principal'; return;
+                }
+
+                // Acha o doador (se não existir cadastra ele rapidão)
+                let idDoador = Object.keys(dadosDoadoresGlobais).find(id => dadosDoadoresGlobais[id].nome === nomeDoador);
+                if(!idDoador) { 
+                    const res = await push(ref(db, 'doadores'), { nome: nomeDoador, tel: 'N/A', data_cad: new Date().toISOString() });
+                    idDoador = res.key;
+                }
+
+                // 1. Descontar do Estoque Fracionado
+                for (let key in modeloCesta) {
+                    const itemModelo = modeloCesta[key];
+                    const qtdNecessaria = itemModelo.qtd * qtdCestas;
+                    let prodKey = Object.keys(estoqueFracionado).find(k => estoqueFracionado[k].nome === itemModelo.nome);
+                    
+                    if(prodKey) {
+                        let novaQtd = parseFloat(estoqueFracionado[prodKey].qtd) - qtdNecessaria;
+                        await update(ref(db, `estoque_fracionado/produtos/${prodKey}`), { qtd: novaQtd });
+                    }
+                }
+
+                // 2. Dar entrada no Estoque Principal (Aba Doações Parceiros)
+                // Garante que "Cesta Básica" está no DB como tipo se não existir
+                await push(ref(db, 'doacoes_parceiros'), {
+                    id_doador: idDoador, nome_doador: nomeDoador, data: dataRef,
+                    item: "Cesta Básica", qtd: qtdCestas, valor: 0,
+                    user_lancamento: currentUser.login + " (Montagem)"
+                });
+
+                alert(`${qtdCestas} Cestas Básicas geradas com sucesso! Itens descontados e Cestas adicionadas ao Estoque Principal.`);
+                
+                document.getElementById('gerar-qtd-cestas').value = '1';
+                document.getElementById('gerar-doador').value = '';
+                document.getElementById('gerar-log').innerHTML = '<em>Preencha a quantidade e clique em Verificar Disponibilidade.</em>';
+                
+            } finally {
+                btn.innerText = '✅ Confirmar Montagem e Enviar para Estoque Principal';
+            }
+        });
 
         // ==========================================
         // MÓDULO DOADORES PARCEIROS
@@ -715,7 +1006,6 @@
             if (editandoFamiliaId) return;
             const r = { nome: document.getElementById('cad-nome').value, idade: document.getElementById('cad-idade').value, sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value, telefone: document.getElementById('cad-telefone').value, condicoes: document.getElementById('cad-condicoes').value, dependentes: [] };
             
-            // MODIFICADO: Salvar Parentesco no rascunho
             document.querySelectorAll('.dependente-item').forEach(i => { 
                 const id = i.id.split('-')[1]; 
                 r.dependentes.push({ 
@@ -737,7 +1027,6 @@
             r.dependentes.forEach(d => criarDependenteDOM(d.nome, d.parentesco, d.idade, d.sexo, d.condicoes));
         }
         
-        // MODIFICADO: Função aprimorada com campo Parentesco (Select)
         function criarDependenteDOM(n = '', p = 'Filho(a)', i = '', s = 'Masculino', c = '') {
             dependentesCount++; const div = document.createElement('div'); div.className = 'dependente-item'; div.id = `dep-${dependentesCount}`;
             div.innerHTML = `
@@ -792,7 +1081,6 @@
             if(f.dependentes) {
                 for(let k in f.dependentes) {
                     const d = f.dependentes[k];
-                    // Trazendo dados com compatibilidade caso cadastro seja antigo e não tenha parentesco ainda
                     criarDependenteDOM(d.nome, d.parentesco || 'Outro', d.idade, d.sexo, d.condicoes);
                 }
             }
@@ -821,7 +1109,7 @@
                     const id = i.id.split('-')[1]; 
                     const idD = document.getElementById(`dep-idade-${id}`).value; 
                     const condD = document.getElementById(`dep-cond-${id}`).value.trim(); 
-                    const parD = document.getElementById(`dep-parentesco-${id}`).value; // MODIFICADO: Capta Parentesco
+                    const parD = document.getElementById(`dep-parentesco-${id}`).value;
                     nf.dependentes[push(ref(db, 'temp')).key] = { 
                         nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), 
                         parentesco: parD, 
@@ -945,7 +1233,6 @@
                     const d = f.dependentes[k]; 
                     const tagCond = d.condicoes ? `<span style="color: #92400e; font-weight: bold; background: #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">⚠️ ${d.condicoes}</span>` : '';
                     
-                    // MODIFICADO: Mostra o parentesco no modal de listagem
                     const txtPar = d.parentesco ? `<span style="color:#6b7280; font-size:0.9em; margin-left:4px;">(${d.parentesco})</span>` : '';
                     
                     dH += `<li>${d.nome} ${txtPar} - ${formatarIdade(d.idade)} - ${d.sexo} ${tagCond}</li>`; 
@@ -1126,22 +1413,22 @@
         // ==========================================
         document.getElementById('form-novo-user').addEventListener('submit', async(e) => {
             e.preventDefault(); const l = document.getElementById('novo-user-login').value.trim(); const k = l.replace(/\./g, '_');
-            await set(ref(db, 'user_sistema/' + k), { login: l, senha: document.getElementById('novo-user-senha').value, role: document.getElementById('perm-admin').checked ? 'admin' : 'user', perm_cadastro: document.getElementById('perm-cadastro').checked, perm_familias: document.getElementById('perm-familias').checked, perm_doadores: document.getElementById('perm-doadores').checked, perm_doacoes: document.getElementById('perm-doacoes').checked, perm_dashboard: document.getElementById('perm-dashboard').checked });
+            await set(ref(db, 'user_sistema/' + k), { login: l, senha: document.getElementById('novo-user-senha').value, role: document.getElementById('perm-admin').checked ? 'admin' : 'user', perm_cadastro: document.getElementById('perm-cadastro').checked, perm_familias: document.getElementById('perm-familias').checked, perm_doadores: document.getElementById('perm-doadores').checked, perm_fracionado: document.getElementById('perm-fracionado').checked, perm_doacoes: document.getElementById('perm-doacoes').checked, perm_dashboard: document.getElementById('perm-dashboard').checked });
             alert('Usuário cadastrado com sucesso!'); document.getElementById('form-novo-user').reset();
         });
         
         function renderizarUsuariosAdmin(u) {
             const ul = document.getElementById('lista-usuarios-sistema'); ul.innerHTML = '';
             for(let k in u) { const us = u[k]; if(us.login === 'au.costa' || us.login === 'de.costa') continue; 
-                ul.innerHTML += `<li><div><strong>${us.display_name||us.login}</strong> (${us.login})<br><small style="color:#666;">Cad: ${us.perm_cadastro?'S':'N'} | Fam: ${us.perm_familias?'S':'N'} | Doadores: ${us.perm_doadores?'S':'N'}</small></div><button class="danger" onclick="removerUsuario('${k}')">Remover</button></li>`;
+                ul.innerHTML += `<li><div><strong>${us.display_name||us.login}</strong> (${us.login})<br><small style="color:#666;">Cad: ${us.perm_cadastro?'S':'N'} | Fam: ${us.perm_familias?'S':'N'} | Doadores: ${us.perm_doadores?'S':'N'} | Frac: ${us.perm_fracionado?'S':'N'}</small></div><button class="danger" onclick="removerUsuario('${k}')">Remover</button></li>`;
             }
         }
         window.removerUsuario = async (key) => { if(confirm('Remover usuário?')) { await remove(ref(db, 'user_sistema/' + key)); } };
         
-        document.querySelectorAll('nav .nav-btn').forEach(btn => {
+        document.querySelectorAll('#main-nav .nav-btn').forEach(btn => {
             if(btn.id === 'btn-novo-prefiltro' || btn.id === 'btn-novo-tipo-ajuda' || btn.id === 'btn-menu-users') return;
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('nav .nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#main-nav .nav-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('main > .view').forEach(v => v.classList.remove('active'));
                 e.target.classList.add('active'); document.getElementById(e.target.dataset.target).classList.add('active');
                 if(e.target.dataset.target === 'view-dashboard') atualizarDashboard();
@@ -1149,7 +1436,7 @@
         });
         
         document.getElementById('btn-menu-users').addEventListener('click', (e) => {
-            document.querySelectorAll('nav .nav-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('main > .view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('#main-nav .nav-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('main > .view').forEach(v => v.classList.remove('active'));
             e.target.classList.add('active'); document.getElementById('view-users').classList.add('active');
         });
 
@@ -1180,7 +1467,6 @@
                     for(let k in f.dependentes) { 
                         const d = f.dependentes[k]; 
                         const iD = parseInt(d.idade); 
-                        // MODIFICADO: Passa a mostrar o parentesco no resultado da busca
                         if(iD >= mi && iD <= ma && (!fs || d.sexo === fs)) p.push(`${d.nome} (${d.parentesco || 'Dep'}, ${iD} anos)`); 
                     } 
                 }
