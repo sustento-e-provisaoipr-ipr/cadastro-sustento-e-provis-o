@@ -106,13 +106,12 @@
         .alerta-item { background: #fff; border-left: 4px solid var(--warning); padding: 1rem; border-radius: 4px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .alerta-item:hover { background: #f8fafc; }
 
-        /* Classes de Alerta de Estoque Fracionado */
         .estoque-zerado { background-color: #fee2e2 !important; color: #991b1b; } 
         .estoque-baixo { background-color: #ffedd5 !important; color: #9a3412; } 
 
         @media (max-width: 768px) {
             .charts-grid, .historico-grid, .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
-            .dependente-item { grid-template-columns: 1fr; }
+            .dependente-item { grid-template-columns: 1fr; } 
             nav { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 10px; }
             main { padding: 1rem; }
             .dash-controls, .filter-grid, .alerta-item { flex-direction: column; align-items: stretch; gap: 10px;}
@@ -145,18 +144,17 @@
             <nav id="main-nav">
                 <button class="nav-btn active" data-target="view-cadastro" data-perm="menu_cadastro">Novo Cadastro</button>
                 <button class="nav-btn" data-target="view-familias" data-perm="menu_familias">Famílias</button>
-                <button class="nav-btn" data-target="view-doadores" data-perm="menu_doadores">Doadores Parceiros</button>
+                
+                <!-- RENOMEADO PARA FINANCEIRO E PARCEIROS -->
+                <button class="nav-btn" data-target="view-doadores" data-perm="menu_doadores">Financeiro & Parceiros</button>
+                
+                <button class="nav-btn" data-target="view-fracionado" data-perm="menu_fracionado">Estoque Fracionado</button>
                 <button class="nav-btn" data-target="view-match" data-perm="menu_doacoes">Doações (Filtro)</button>
                 <button class="nav-btn" data-target="view-dashboard" data-perm="menu_dashboard">📊 Dashboard</button>
                 <button class="nav-btn admin-btn" id="btn-menu-users" data-target="view-users" style="display:none;">Cadastrar User</button>
-                
-                <!-- NOVO BOTÃO: ESTOQUE FRACIONADO -->
-                <button class="nav-btn" data-target="view-fracionado" data-perm="menu_fracionado">Estoque Fracionado</button>
-                
                 <button id="btn-logout" class="danger" style="margin-left: 10px;">Sair</button>
             </nav>
             
-            <!-- ÁREA DO PERFIL DO USUÁRIO -->
             <div id="btn-perfil" onclick="abrirModalPerfil()" title="Clique para editar o perfil">
                 <img id="header-avatar" src="" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; display: none; margin-bottom: 2px;">
                 <span id="user-display" style="font-weight: bold; font-size: 0.85rem; color: #555;"></span>
@@ -207,17 +205,18 @@
                 <div class="bairros-grid" id="bairros-container"></div>
             </div>
 
-            <!-- VIEW: DOADORES PARCEIROS -->
+            <!-- VIEW: FINANCEIRO & PARCEIROS -->
             <div id="view-doadores" class="view">
                 <div class="sub-nav">
-                    <button class="nav-btn active" data-sub="doador-lanc">Lançar Doação</button>
+                    <button class="nav-btn active" data-sub="doador-lanc">Entrada (PIX/Doação)</button>
+                    <button class="nav-btn" data-sub="doador-despesa" style="border-color: var(--danger); color: var(--danger);">Registrar Compra (Saída)</button>
                     <button class="nav-btn" data-sub="doador-cad">Novo Doador</button>
-                    <button class="nav-btn" data-sub="doador-dash">Dashboard Parceiros</button>
+                    <button class="nav-btn" data-sub="doador-dash">Dashboard Financeiro</button>
                 </div>
 
-                <!-- Sub View: Lançar Doação -->
+                <!-- Sub View: Lançar Doação (Entrada) -->
                 <div id="doador-lanc" class="sub-view active">
-                    <h3 class="view-title">Registrar Doação Recebida (Entrada de Estoque/Caixa)</h3>
+                    <h3 class="view-title">Registrar Doação Recebida (Entrada)</h3>
                     <form id="form-lanc-doacao">
                         <div class="form-grid-2">
                             <div class="form-group">
@@ -233,9 +232,42 @@
                                 <select id="lanc-doacao-item" required></select>
                             </div>
                             <div class="form-group"><label>Quantidade (Itens Físicos)</label><input type="number" id="lanc-doacao-qtd" value="0" min="0" required></div>
-                            <div class="form-group"><label>Valor Financeiro (R$)</label><input type="number" id="lanc-doacao-valor" value="0.00" step="0.01" min="0" required></div>
+                            <div class="form-group"><label>Valor Financeiro (R$ - PIX/Dinheiro)</label><input type="number" id="lanc-doacao-valor" value="0.00" step="0.01" min="0" required></div>
                         </div>
-                        <button type="submit" class="secondary">Registrar Doação e Alimentar Estoque</button>
+                        <button type="submit" class="secondary">Registrar Doação (Alimentar Caixa)</button>
+                    </form>
+                </div>
+
+                <!-- Sub View: NOVO Registrar Despesa / Compra (Saída) -->
+                <div id="doador-despesa" class="sub-view">
+                    <h3 class="view-title" style="color: var(--danger);">Registrar Saída Financeira (Compras/Despesas)</h3>
+                    <form id="form-despesa">
+                        <div class="form-grid-2">
+                            <div class="form-group"><label>Data da Saída</label><input type="date" id="despesa-data" required></div>
+                            <div class="form-group"><label>Valor Gasto (R$)</label><input type="number" id="despesa-valor" step="0.01" min="0.01" required></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Motivo / Descrição da Compra</label>
+                            <input type="text" id="despesa-motivo" placeholder="Ex: Compra de 10 pacotes de Feijão, Gás para Ação, etc..." required>
+                        </div>
+                        
+                        <div class="form-group" style="background: #f0fdf4; padding: 10px; border-radius: 4px; border: 1px solid #bbf7d0;">
+                            <label style="color: var(--success); font-weight: bold; cursor: pointer;">
+                                <input type="checkbox" id="despesa-add-estoque"> ➕ Alimentar Estoque Fracionado com esta compra?
+                            </label>
+                            <div id="despesa-estoque-container" style="display:none; margin-top: 10px;" class="form-grid-2">
+                                <div><label>Qual Produto do Estoque?</label><select id="despesa-item-estoque"></select></div>
+                                <div><label>Quantidade Comprada</label><input type="number" id="despesa-qtd-estoque" min="1" value="1"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Comprovante (Tirar Foto ou Anexar Imagem)</label>
+                            <input type="file" id="despesa-comprovante" accept="image/*" required style="padding: 0.5rem; background: #fff;">
+                            <img id="preview-despesa-comprovante" style="max-width: 150px; max-height: 150px; display: none; margin-top: 10px; border-radius: 4px; border: 1px solid var(--border);">
+                        </div>
+
+                        <button type="submit" class="danger">Registrar Despesa (Descontar do Caixa)</button>
                     </form>
                 </div>
 
@@ -251,20 +283,30 @@
                     </form>
                 </div>
 
-                <!-- Sub View: Dash Doadores (Mostra Estoque também) -->
+                <!-- Sub View: Dash Doadores / Financeiro -->
                 <div id="doador-dash" class="sub-view">
-                    <h3 class="view-title">Histórico de Parceiros e Estoque Atual</h3>
+                    <h3 class="view-title">Histórico de Caixa e Parceiros</h3>
                     
-                    <h4 style="margin-bottom: 0.5rem; color: var(--primary);">Resumo de Estoque / Caixa (Tempo Real)</h4>
+                    <h4 style="margin-bottom: 0.5rem; color: var(--primary);">Resumo do Caixa e Estoque Principal (Tempo Real)</h4>
                     <div class="dash-cards" id="estoque-doadores-container"></div>
 
-                    <h4 style="margin-top: 2rem; margin-bottom: 0.5rem;">Histórico de Entradas</h4>
+                    <h4 style="margin-top: 2rem; margin-bottom: 0.5rem; color: var(--success);">🟢 Histórico de Entradas (Recebimentos)</h4>
                     <div class="table-responsive" style="background: var(--bg); border-radius: 4px; padding: 1rem;">
                         <table>
                             <thead>
                                 <tr><th>Data</th><th>Doador</th><th>Item</th><th>Qtd</th><th>Valor (R$)</th></tr>
                             </thead>
                             <tbody id="tabela-doacoes-recebidas"></tbody>
+                        </table>
+                    </div>
+
+                    <h4 style="margin-top: 2rem; margin-bottom: 0.5rem; color: var(--danger);">🔴 Histórico de Saídas (Compras/Despesas)</h4>
+                    <div class="table-responsive" style="background: var(--bg); border-radius: 4px; padding: 1rem;">
+                        <table>
+                            <thead>
+                                <tr><th>Data</th><th>Motivo / Descrição</th><th>Valor (R$)</th><th>Lançado por</th><th>Comprovante</th></tr>
+                            </thead>
+                            <tbody id="tabela-despesas-realizadas"></tbody>
                         </table>
                     </div>
                 </div>
@@ -357,7 +399,6 @@
             <div id="view-dashboard" class="view">
                 <h3 class="view-title">Dashboard Analítico e Estoque</h3>
                 
-                <!-- ALERTAS DE DOAÇÃO FIXA -->
                 <h4 style="margin-bottom: 0.5rem; color: var(--danger);">⚠️ Alertas de Doações Fixas (Próximos 7 dias ou Atrasadas)</h4>
                 <div id="dash-alertas-fixas" style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom: 2rem;"></div>
 
@@ -373,16 +414,13 @@
                 </div>
 
                 <h4 style="margin-top: 1rem; margin-bottom: 1rem; color: var(--primary);">RESUMO DE SAÍDAS (Ajuda Entregue)</h4>
-                <!-- Cards Totais -->
                 <div class="dash-cards" id="dash-cards-container"></div>
 
-                <!-- Gráficos -->
                 <div class="charts-grid">
                     <div class="chart-container"><canvas id="graficoTipos"></canvas></div>
                     <div class="chart-container"><canvas id="graficoFamilias"></canvas></div>
                 </div>
 
-                <!-- Tabela Detalhada -->
                 <div style="background:var(--bg); padding:1rem; border-radius:4px;">
                     <h4 style="margin-bottom:1rem;">Registros de Saída Detalhados</h4>
                     <div class="table-responsive" style="max-height: 400px; overflow-y:auto;">
@@ -411,7 +449,7 @@
                         <div class="checkbox-group">
                             <label><input type="checkbox" id="perm-cadastro" checked> Cadastro</label>
                             <label><input type="checkbox" id="perm-familias" checked> Famílias</label>
-                            <label><input type="checkbox" id="perm-doadores" checked> Doadores</label>
+                            <label><input type="checkbox" id="perm-doadores" checked> Financeiro/Doadores</label>
                             <label><input type="checkbox" id="perm-fracionado" checked> Estoque Fracionado</label>
                             <label><input type="checkbox" id="perm-doacoes" checked> Filtro Doações</label>
                             <label><input type="checkbox" id="perm-dashboard"> Dashboard</label>
@@ -427,24 +465,26 @@
         </main>
     </div>
 
+    <!-- MODAIS GERAIS DO SISTEMA -->
+
     <!-- MODAL: PERFIL DO USUÁRIO -->
     <div id="modal-perfil" class="modal">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <button class="close-modal" onclick="fecharModal('modal-perfil')">&times;</button>
             <h3 style="margin-bottom: 1rem; color: var(--primary);">Meu Perfil</h3>
-            
             <img id="preview-avatar" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 10px auto; background: var(--bg); border: 2px solid var(--primary); display: block;">
-            
-            <div class="form-group">
-                <label>Alterar Foto de Perfil</label>
-                <input type="file" id="input-foto" accept="image/*" style="padding: 0.5rem;">
-            </div>
-            <div class="form-group text-left">
-                <label>Nome de Exibição</label>
-                <input type="text" id="input-display-nome" placeholder="Como você quer ser chamado?">
-            </div>
-            
+            <div class="form-group"><label>Alterar Foto de Perfil</label><input type="file" id="input-foto" accept="image/*" style="padding: 0.5rem;"></div>
+            <div class="form-group text-left"><label>Nome de Exibição</label><input type="text" id="input-display-nome" placeholder="Como você quer ser chamado?"></div>
             <button id="btn-salvar-perfil" class="secondary">Salvar Alterações</button>
+        </div>
+    </div>
+
+    <!-- MODAL: VISUALIZAR COMPROVANTE -->
+    <div id="modal-ver-comprovante" class="modal">
+        <div class="modal-content" style="text-align: center; max-width: 600px;">
+            <button class="close-modal" onclick="fecharModal('modal-ver-comprovante')">&times;</button>
+            <h3 style="margin-bottom: 1rem; color: var(--primary);">Comprovante da Transação</h3>
+            <img id="img-comprovante-full" src="" style="max-width: 100%; max-height: 70vh; border-radius: 4px; border: 1px solid var(--border); object-fit: contain;">
         </div>
     </div>
 
@@ -475,18 +515,13 @@
                     </h4>
                     <form id="form-ajuda">
                         <div class="form-group"><label>Tipo de Ajuda</label><select id="ajuda-tipo" required></select></div>
-                        
-                        <!-- DOAÇÃO FIXA -->
                         <div class="checkbox-group" style="margin-bottom: 1rem; background: #fff; padding: 5px; border-radius: 4px;">
-                            <label style="color: var(--primary); font-weight: bold;">
-                                <input type="checkbox" id="ajuda-recorrente"> 🔄Fixa
-                            </label>
+                            <label style="color: var(--primary); font-weight: bold;"><input type="checkbox" id="ajuda-recorrente"> 🔄Fixa</label>
                         </div>
                         <div id="ajuda-recorrente-dias-container" class="form-group" style="display: none; background: #e0f2fe; padding: 10px; border-radius: 4px;">
                             <label style="color:#0369a1;">Entregar a cada quantos dias?</label>
                             <input type="number" id="ajuda-recorrente-dias" value="30" min="1">
                         </div>
-
                         <div class="form-grid-2">
                             <div class="form-group"><label>Qtd. (Itens)</label><input type="number" id="ajuda-qtd" value="1" min="0" required></div>
                             <div class="form-group"><label>Valor / Custo (R$)</label><input type="number" id="ajuda-valor" value="0.00" step="0.01" min="0" required></div>
@@ -527,14 +562,16 @@
         let configGlobais = { tipos_ajuda: {}, pre_filtros: {} };
         let dadosDoadoresGlobais = {};
         let doacoesParceirosGlobais = {};
-        let estoqueFracionado = {}; // NOVO: Controle de Itens Soltos
-        let modeloCesta = {};       // NOVO: Receita da Cesta
+        let despesasGlobais = {}; // NOVO: Despesas Financeiras
+        let estoqueFracionado = {}; 
+        let modeloCesta = {};       
         let familiaAtualId = null;
         let currentUser = null;
         let editandoFamiliaId = null;
         
         let chartTiposInstance = null;
         let chartFamiliasInstance = null;
+        let base64ComprovanteAtual = '';
 
         function classificarIdadePura(i) { i=parseInt(i); return i===0?'Recém-nascido':i<=10?'Criança':i<=15?'Adolescente':i<=17?'Jovem':i<=49?'Adulto':'Idoso'; }
         function formatarIdade(i) { return `${i} anos (${classificarIdadePura(i)})`; }
@@ -550,7 +587,6 @@
                 await set(ref(db, 'configuracoes/tipos_ajuda'), { t1: "Cesta Básica", t2: "Farmácia/Remédio", t3: "Conta de Luz", t4: "Roupas", t5: "Dinheiro / Financeiro" });
                 await set(ref(db, 'configuracoes/pre_filtros'), { pf1: {nome: "Fralda Infantil (0-3 anos)", min: 0, max: 3, sexo: ""} });
             }
-
             const sessionUser = localStorage.getItem('currentUser');
             if(sessionUser) { currentUser = JSON.parse(sessionUser); iniciarSistema(); }
             carregarRascunhoForm();
@@ -564,47 +600,28 @@
             if ((user === 'au.costa' || user === 'de.costa') && pass === '80605276') {
                 currentUser = { login: user, role: 'admin', perm_cadastro: true, perm_familias: true, perm_doacoes: true, perm_dashboard: true, perm_doadores: true, perm_fracionado: true };
                 const s = await get(ref(db, 'user_sistema/' + userId));
-                if(s.exists()) { 
-                    currentUser.display_name = s.val().display_name || user;
-                    currentUser.foto = s.val().foto || '';
-                } else {
-                    currentUser.display_name = user;
-                }
-                localStorage.setItem('currentUser', JSON.stringify(currentUser)); 
-                iniciarSistema();
-                return;
+                if(s.exists()) { currentUser.display_name = s.val().display_name || user; currentUser.foto = s.val().foto || ''; } 
+                else { currentUser.display_name = user; }
+                localStorage.setItem('currentUser', JSON.stringify(currentUser)); iniciarSistema(); return;
             }
 
             const userSnap = await get(ref(db, 'user_sistema/' + userId));
             if (userSnap.exists() && userSnap.val().senha === pass) {
                 currentUser = userSnap.val();
                 if(!currentUser.display_name) currentUser.display_name = currentUser.login;
-                localStorage.setItem('currentUser', JSON.stringify(currentUser)); 
-                iniciarSistema();
+                localStorage.setItem('currentUser', JSON.stringify(currentUser)); iniciarSistema();
             } else { alert('Usuário ou senha incorretos!'); }
         });
 
-        document.getElementById('btn-logout').addEventListener('click', () => {
-            localStorage.removeItem('currentUser');
-            location.reload();
-        });
+        document.getElementById('btn-logout').addEventListener('click', () => { localStorage.removeItem('currentUser'); location.reload(); });
 
         function iniciarSistema() {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-screen').style.display = 'flex';
-            
+            document.getElementById('login-screen').style.display = 'none'; document.getElementById('app-screen').style.display = 'flex';
             document.getElementById('user-display').innerText = currentUser.display_name;
-            if(currentUser.foto) {
-                document.getElementById('header-avatar').src = currentUser.foto;
-                document.getElementById('header-avatar').style.display = 'block';
-            }
+            if(currentUser.foto) { document.getElementById('header-avatar').src = currentUser.foto; document.getElementById('header-avatar').style.display = 'block'; }
             
-            aplicarPermissoes();
-            configurarFiltroDashboardPadrao();
-            carregarDadosGerais();
-            configurarBuscaRapida();
-            
-            document.getElementById('gerar-data').valueAsDate = new Date();
+            aplicarPermissoes(); configurarFiltroDashboardPadrao(); carregarDadosGerais(); configurarBuscaRapida();
+            document.getElementById('gerar-data').valueAsDate = new Date(); document.getElementById('despesa-data').valueAsDate = new Date();
             
             const navBtns = Array.from(document.querySelectorAll('#main-nav .nav-btn'));
             const firstVisible = navBtns.find(btn => btn.style.display !== 'none');
@@ -623,7 +640,7 @@
         }
 
         // ==========================================
-        // PERFIL DO USUÁRIO
+        // PERFIL DO USUÁRIO E COMPROVANTES
         // ==========================================
         window.abrirModalPerfil = () => {
             document.getElementById('input-display-nome').value = currentUser.display_name || currentUser.login;
@@ -631,67 +648,65 @@
             document.getElementById('modal-perfil').style.display = 'flex';
         }
 
-        document.getElementById('input-foto').addEventListener('change', function(e) {
-            const file = e.target.files[0];
+        // Comprime Imagens (Perfil e Comprovantes)
+        function processarImagem(file, elementId, maxWidth, callback) {
             if(file) {
                 const reader = new FileReader();
                 reader.onload = function(re) {
                     const img = new Image();
                     img.onload = function() {
                         const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-                        canvas.width = 150; canvas.height = 150;
-                        ctx.drawImage(img, 0, 0, 150, 150);
-                        document.getElementById('preview-avatar').src = canvas.toDataURL('image/jpeg', 0.8);
+                        let w = img.width; let h = img.height;
+                        if(w > maxWidth) { h *= maxWidth / w; w = maxWidth; }
+                        canvas.width = w; canvas.height = h; ctx.drawImage(img, 0, 0, w, h);
+                        const base64 = canvas.toDataURL('image/jpeg', 0.7); // Comprime 70%
+                        document.getElementById(elementId).src = base64;
+                        document.getElementById(elementId).style.display = 'block';
+                        if(callback) callback(base64);
                     }
                     img.src = re.target.result;
                 }
                 reader.readAsDataURL(file);
             }
+        }
+
+        document.getElementById('input-foto').addEventListener('change', e => processarImagem(e.target.files[0], 'preview-avatar', 150));
+        
+        document.getElementById('despesa-comprovante').addEventListener('change', e => {
+            processarImagem(e.target.files[0], 'preview-despesa-comprovante', 800, (base64) => {
+                base64ComprovanteAtual = base64;
+            });
         });
 
         document.getElementById('btn-salvar-perfil').addEventListener('click', async () => {
-            const novoNome = document.getElementById('input-display-nome').value.trim();
-            const novaFoto = document.getElementById('preview-avatar').src;
+            const novoNome = document.getElementById('input-display-nome').value.trim(); const novaFoto = document.getElementById('preview-avatar').src;
             const userId = currentUser.login.replace(/\./g, '_');
-            
-            currentUser.display_name = novoNome;
-            currentUser.foto = novaFoto;
-            document.getElementById('user-display').innerText = novoNome;
-            document.getElementById('header-avatar').src = novaFoto;
-            document.getElementById('header-avatar').style.display = 'block';
+            currentUser.display_name = novoNome; currentUser.foto = novaFoto;
+            document.getElementById('user-display').innerText = novoNome; document.getElementById('header-avatar').src = novaFoto; document.getElementById('header-avatar').style.display = 'block';
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-            await update(ref(db, 'user_sistema/' + userId), { display_name: novoNome, foto: novaFoto });
-            fecharModal('modal-perfil');
+            await update(ref(db, 'user_sistema/' + userId), { display_name: novoNome, foto: novaFoto }); fecharModal('modal-perfil');
         });
 
+        window.fecharModal = (id) => document.getElementById(id).style.display = 'none';
+
         // ==========================================
-        // CARREGAMENTO DE DADOS (REALTIME)
+        // CARREGAMENTO DE DADOS (REALTIME) E ESTOQUE
         // ==========================================
         function carregarDadosGerais() {
             onValue(ref(db, 'cadastro'), (s) => { 
                 dadosFamiliasGlobais = s.val() || {}; renderizarFamilias(); 
                 if(document.getElementById('view-dashboard').classList.contains('active')) atualizarDashboard();
-                if(familiaAtualId) atualizarHistoricoDOM(familiaAtualId);
-                calcularEstoqueReal();
+                if(familiaAtualId) atualizarHistoricoDOM(familiaAtualId); calcularEstoqueReal();
             });
             onValue(ref(db, 'configuracoes'), (s) => { configGlobais = s.val() || { tipos_ajuda: {}, pre_filtros: {} }; atualizarListasDinamicas(); });
             onValue(ref(db, 'doadores'), (s) => { dadosDoadoresGlobais = s.val() || {}; preencherListaDoadores(); });
             onValue(ref(db, 'doacoes_parceiros'), (s) => { doacoesParceirosGlobais = s.val() || {}; atualizarDashDoadores(); calcularEstoqueReal(); });
+            onValue(ref(db, 'despesas_financeiras'), (s) => { despesasGlobais = s.val() || {}; atualizarDashDoadores(); calcularEstoqueReal(); });
             
-            // NOVO: Listeners do Fracionado
-            onValue(ref(db, 'estoque_fracionado/produtos'), (s) => {
-                estoqueFracionado = s.val() || {};
-                atualizarTabelaFracionado();
-                preencherSelectModeloCesta();
-            });
-            onValue(ref(db, 'estoque_fracionado/modelo'), (s) => {
-                modeloCesta = s.val() || {};
-                atualizarTabelaModelo();
-            });
+            onValue(ref(db, 'estoque_fracionado/produtos'), (s) => { estoqueFracionado = s.val() || {}; atualizarTabelaFracionado(); preencherSelectModeloCesta(); });
+            onValue(ref(db, 'estoque_fracionado/modelo'), (s) => { modeloCesta = s.val() || {}; atualizarTabelaModelo(); });
 
             if(currentUser.role === 'admin') onValue(ref(db, 'user_sistema'), (s) => renderizarUsuariosAdmin(s.val() || {}));
-            document.getElementById('ajuda-mes').valueAsDate = new Date(); document.getElementById('lanc-doacao-data').valueAsDate = new Date();
         }
 
         function atualizarListasDinamicas() {
@@ -706,15 +721,16 @@
         }
 
         function calcularEstoqueReal() {
-            let caixa = 0.0;
-            let itens = {};
+            let caixa = 0.0; let itens = {};
 
+            // 1. Entradas (Doações)
             for(let key in doacoesParceirosGlobais) {
                 let d = doacoesParceirosGlobais[key];
                 if(d.qtd && parseFloat(d.qtd) > 0) { itens[d.item] = (itens[d.item] || 0) + parseFloat(d.qtd); }
                 if(d.valor && parseFloat(d.valor) > 0) { caixa += parseFloat(d.valor); }
             }
 
+            // 2. Saídas (Ajudas Família)
             for(let id in dadosFamiliasGlobais) {
                 let fam = dadosFamiliasGlobais[id];
                 if(fam.historico_ajuda) {
@@ -725,221 +741,24 @@
                     }
                 }
             }
+            
+            // 3. Saídas (Despesas / Compras)
+            for(let key in despesasGlobais) {
+                let desp = despesasGlobais[key];
+                if(desp.valor && parseFloat(desp.valor) > 0) { caixa -= parseFloat(desp.valor); }
+            }
 
             let htmlEstoque = `<div class="dash-card" style="border-left-color: ${caixa>=0?'var(--success)':'var(--danger)'}; background: #f8fafc;"><h4>Caixa Disponível</h4><span style="color:${caixa>=0?'var(--success)':'var(--danger)'}">${formatarDinheiro(caixa)}</span></div>`;
             for(let item in itens) {
                 let cor = itens[item] > 0 ? 'var(--primary)' : 'var(--danger)';
                 htmlEstoque += `<div class="dash-card"><h4>${item}</h4><span style="color:${cor}">${itens[item]}</span></div>`;
             }
-            
             document.getElementById('dash-estoque-geral').innerHTML = htmlEstoque || '<p>Estoque Vazio.</p>';
             document.getElementById('estoque-doadores-container').innerHTML = htmlEstoque || '<p>Estoque Vazio.</p>';
         }
 
         // ==========================================
-        // NOVO: MÓDULO ESTOQUE FRACIONADO E MONTAGEM
-        // ==========================================
-        document.querySelectorAll('#view-fracionado .sub-nav .nav-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('#view-fracionado .sub-nav .nav-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('#view-fracionado .sub-view').forEach(v => v.classList.remove('active'));
-                e.target.classList.add('active'); document.getElementById(e.target.dataset.sub).classList.add('active');
-            });
-        });
-
-        // Add Produto Fracionado
-        document.getElementById('form-add-frac').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button'); btn.disabled = true;
-            try {
-                const nome = document.getElementById('frac-nome').value.trim().toUpperCase();
-                const qtdAdicionar = parseFloat(document.getElementById('frac-qtd').value);
-                
-                let prodId = Object.keys(estoqueFracionado).find(id => estoqueFracionado[id].nome === nome);
-                if (prodId) {
-                    const novaQtd = parseFloat(estoqueFracionado[prodId].qtd) + qtdAdicionar;
-                    await update(ref(db, `estoque_fracionado/produtos/${prodId}`), { qtd: novaQtd });
-                } else {
-                    await push(ref(db, 'estoque_fracionado/produtos'), { nome, qtd: qtdAdicionar });
-                }
-                document.getElementById('form-add-frac').reset(); document.getElementById('frac-qtd').value = 1;
-            } finally { btn.disabled = false; }
-        });
-
-        function atualizarTabelaFracionado() {
-            const tb = document.getElementById('tabela-frac-estoque'); tb.innerHTML = '';
-            const chaves = Object.keys(estoqueFracionado);
-            if(chaves.length === 0) { tb.innerHTML = '<tr><td colspan="3" align="center" style="padding:1rem;">Nenhum produto cadastrado no estoque fracionado.</td></tr>'; return; }
-            
-            chaves.forEach(id => {
-                const p = estoqueFracionado[id];
-                const qtd = parseFloat(p.qtd);
-                let classeEst = '';
-                if (qtd === 0) classeEst = 'estoque-zerado';
-                else if (qtd <= 5) classeEst = 'estoque-baixo';
-
-                tb.innerHTML += `<tr class="${classeEst}">
-                    <td style="font-weight:bold;">${p.nome}</td>
-                    <td>${qtd} un.</td>
-                    <td>
-                        <button class="nav-btn" style="padding:2px 8px; font-size:0.8rem; margin-right:5px; border-color:#6b7280; color:#374151; background:#fff;" onclick="ajustarQtdFrac('${id}')">✏️ Ajustar</button>
-                        <button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="removerFrac('${id}')">X</button>
-                    </td>
-                </tr>`;
-            });
-        }
-        
-        window.ajustarQtdFrac = async (id) => {
-            const p = estoqueFracionado[id];
-            const nova = prompt(`Defina a quantidade EXATA (atual = ${p.qtd}) para o produto: ${p.nome}`, p.qtd);
-            if(nova !== null && nova.trim() !== '') {
-                await update(ref(db, `estoque_fracionado/produtos/${id}`), { qtd: parseFloat(nova) });
-            }
-        };
-        window.removerFrac = async (id) => {
-            if(confirm('Tem certeza que deseja remover este produto do estoque fracionado?')) {
-                await remove(ref(db, `estoque_fracionado/produtos/${id}`));
-            }
-        };
-
-        // Modelo da Cesta
-        function preencherSelectModeloCesta() {
-            const sel = document.getElementById('modelo-produto'); sel.innerHTML = '';
-            Object.values(estoqueFracionado).forEach(p => { sel.innerHTML += `<option value="${p.nome}">${p.nome}</option>`; });
-        }
-
-        document.getElementById('form-add-modelo').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button'); btn.disabled = true;
-            try {
-                const nome = document.getElementById('modelo-produto').value;
-                const qtd = parseFloat(document.getElementById('modelo-qtd').value);
-                if(!nome) { alert('Você precisa cadastrar itens no estoque fracionado primeiro.'); return; }
-                
-                let idProd = Object.keys(modeloCesta).find(id => modeloCesta[id].nome === nome);
-                if (idProd) {
-                    await update(ref(db, `estoque_fracionado/modelo/${idProd}`), { qtd: qtd });
-                } else {
-                    await push(ref(db, 'estoque_fracionado/modelo'), { nome, qtd });
-                }
-                document.getElementById('modelo-qtd').value = 1;
-            } finally { btn.disabled = false; }
-        });
-
-        function atualizarTabelaModelo() {
-            const tb = document.getElementById('tabela-frac-modelo'); tb.innerHTML = '';
-            const chaves = Object.keys(modeloCesta);
-            if(chaves.length === 0) { tb.innerHTML = '<tr><td colspan="3" align="center" style="padding:1rem;">Nenhum item na receita da cesta.</td></tr>'; return; }
-            
-            chaves.forEach(id => {
-                const p = modeloCesta[id];
-                tb.innerHTML += `<tr>
-                    <td style="font-weight:bold; color:var(--primary);">${p.nome}</td>
-                    <td>${p.qtd} unidade(s) por Cesta</td>
-                    <td>
-                        <button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="removerItemModelo('${id}')">Remover</button>
-                    </td>
-                </tr>`;
-            });
-        }
-        window.removerItemModelo = async (id) => {
-            if(confirm('Remover este item da Cesta Básica?')) {
-                await remove(ref(db, `estoque_fracionado/modelo/${id}`));
-            }
-        };
-
-        // Simular e Gerar
-        document.getElementById('btn-simular-gerar').addEventListener('click', () => {
-            const qtdCestas = parseInt(document.getElementById('gerar-qtd-cestas').value) || 0;
-            const logDiv = document.getElementById('gerar-log');
-            if (qtdCestas <= 0) return;
-
-            if (Object.keys(modeloCesta).length === 0) {
-                logDiv.innerHTML = '<span style="color:var(--danger); font-weight:bold;">⚠️ Você precisa definir os itens da Cesta na aba "Modelo da Cesta" primeiro.</span>';
-                return;
-            }
-
-            let isPossivel = true;
-            let logHtml = `<h4 style="margin-bottom:10px;">Simulação para gerar ${qtdCestas} Cesta(s):</h4><ul style="list-style:none; padding:0; margin:0;">`;
-
-            for (let key in modeloCesta) {
-                const itemModelo = modeloCesta[key];
-                const qtdNecessaria = itemModelo.qtd * qtdCestas;
-
-                let prodKey = Object.keys(estoqueFracionado).find(k => estoqueFracionado[k].nome === itemModelo.nome);
-                let qtdEstoque = prodKey ? parseFloat(estoqueFracionado[prodKey].qtd) : 0;
-
-                if (qtdEstoque >= qtdNecessaria) {
-                    logHtml += `<li style="color: var(--success); margin-bottom:8px; padding:5px; border-bottom:1px solid #e5e7eb;">
-                        ✔️ <b>${itemModelo.nome}:</b> Necessita ${qtdNecessaria} | Tem ${qtdEstoque}
-                    </li>`;
-                } else {
-                    isPossivel = false;
-                    let falta = qtdNecessaria - qtdEstoque;
-                    logHtml += `<li style="color: var(--danger); margin-bottom:8px; padding:5px; border-bottom:1px solid #e5e7eb; background:#fee2e2; border-radius:4px;">
-                        ❌ <b>${itemModelo.nome}:</b> Necessita ${qtdNecessaria} | Tem ${qtdEstoque} <br><small style="font-weight:bold;">(Faltam + ${falta} unidade(s))</small>
-                    </li>`;
-                }
-            }
-            logHtml += '</ul>';
-            logDiv.innerHTML = logHtml;
-            document.getElementById('btn-confirmar-gerar').disabled = !isPossivel;
-        });
-
-        document.getElementById('btn-confirmar-gerar').addEventListener('click', async () => {
-            const btn = document.getElementById('btn-confirmar-gerar');
-            btn.disabled = true; btn.innerText = 'Processando...';
-
-            try {
-                const qtdCestas = parseInt(document.getElementById('gerar-qtd-cestas').value);
-                const nomeDoador = document.getElementById('gerar-doador').value.toUpperCase();
-                const dataRef = document.getElementById('gerar-data').value;
-                
-                if(!nomeDoador) {
-                    alert('Por favor, informe quem está doando/montando essas cestas.');
-                    btn.disabled = false; btn.innerText = '✅ Confirmar Montagem e Enviar para Estoque Principal'; return;
-                }
-
-                // Acha o doador (se não existir cadastra ele rapidão)
-                let idDoador = Object.keys(dadosDoadoresGlobais).find(id => dadosDoadoresGlobais[id].nome === nomeDoador);
-                if(!idDoador) { 
-                    const res = await push(ref(db, 'doadores'), { nome: nomeDoador, tel: 'N/A', data_cad: new Date().toISOString() });
-                    idDoador = res.key;
-                }
-
-                // 1. Descontar do Estoque Fracionado
-                for (let key in modeloCesta) {
-                    const itemModelo = modeloCesta[key];
-                    const qtdNecessaria = itemModelo.qtd * qtdCestas;
-                    let prodKey = Object.keys(estoqueFracionado).find(k => estoqueFracionado[k].nome === itemModelo.nome);
-                    
-                    if(prodKey) {
-                        let novaQtd = parseFloat(estoqueFracionado[prodKey].qtd) - qtdNecessaria;
-                        await update(ref(db, `estoque_fracionado/produtos/${prodKey}`), { qtd: novaQtd });
-                    }
-                }
-
-                // 2. Dar entrada no Estoque Principal (Aba Doações Parceiros)
-                // Garante que "Cesta Básica" está no DB como tipo se não existir
-                await push(ref(db, 'doacoes_parceiros'), {
-                    id_doador: idDoador, nome_doador: nomeDoador, data: dataRef,
-                    item: "Cesta Básica", qtd: qtdCestas, valor: 0,
-                    user_lancamento: currentUser.login + " (Montagem)"
-                });
-
-                alert(`${qtdCestas} Cestas Básicas geradas com sucesso! Itens descontados e Cestas adicionadas ao Estoque Principal.`);
-                
-                document.getElementById('gerar-qtd-cestas').value = '1';
-                document.getElementById('gerar-doador').value = '';
-                document.getElementById('gerar-log').innerHTML = '<em>Preencha a quantidade e clique em Verificar Disponibilidade.</em>';
-                
-            } finally {
-                btn.innerText = '✅ Confirmar Montagem e Enviar para Estoque Principal';
-            }
-        });
-
-        // ==========================================
-        // MÓDULO DOADORES PARCEIROS
+        // MÓDULO FINANCEIRO E PARCEIROS (DOADORES)
         // ==========================================
         document.querySelectorAll('#view-doadores .sub-nav .nav-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -949,29 +768,9 @@
             });
         });
 
-        document.getElementById('form-cad-doador').addEventListener('submit', async (e) => {
-            e.preventDefault(); 
-            const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true; 
-            try {
-                const nome = document.getElementById('cad-doador-nome').value.trim().toUpperCase();
-                await push(ref(db, 'doadores'), { nome: nome, tel: document.getElementById('cad-doador-tel').value, data_cad: new Date().toISOString() });
-                alert('Parceiro Cadastrado!'); e.target.reset(); document.querySelector('[data-sub="doador-lanc"]').click();
-            } finally {
-                btn.disabled = false;
-            }
-        });
-
-        function preencherListaDoadores() {
-            const dl = document.getElementById('lista-doadores'); dl.innerHTML = '';
-            Object.values(dadosDoadoresGlobais).forEach(d => { dl.innerHTML += `<option value="${d.nome}">`; });
-        }
-
+        // Entradas PIX/Itens
         document.getElementById('form-lanc-doacao').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true; 
-            
+            e.preventDefault(); const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; 
             try {
                 const nome = document.getElementById('lanc-doador-nome').value.toUpperCase();
                 let idDoador = Object.keys(dadosDoadoresGlobais).find(id => dadosDoadoresGlobais[id].nome === nome);
@@ -979,24 +778,196 @@
 
                 await push(ref(db, 'doacoes_parceiros'), {
                     id_doador: idDoador, nome_doador: nome, data: document.getElementById('lanc-doacao-data').value,
-                    item: document.getElementById('lanc-doacao-item').value, qtd: document.getElementById('lanc-doacao-qtd').value, valor: document.getElementById('lanc-doacao-valor').value,
-                    user_lancamento: currentUser.login
+                    item: document.getElementById('lanc-doacao-item').value, qtd: document.getElementById('lanc-doacao-qtd').value, valor: document.getElementById('lanc-doacao-valor').value, user_lancamento: currentUser.login
                 });
                 alert('Doação registrada com sucesso!'); 
                 document.getElementById('lanc-doacao-qtd').value = '0'; document.getElementById('lanc-doacao-valor').value = '0.00'; document.getElementById('lanc-doador-nome').value = '';
-            } finally {
-                btn.disabled = false;
-            }
+            } finally { btn.disabled = false; }
         });
 
+        // Saídas Financeiras (Compras)
+        document.getElementById('despesa-add-estoque').addEventListener('change', (e) => {
+            document.getElementById('despesa-estoque-container').style.display = e.target.checked ? 'flex' : 'none';
+        });
+
+        document.getElementById('form-despesa').addEventListener('submit', async (e) => {
+            e.preventDefault(); const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.innerText = 'Registrando...';
+            try {
+                if(!base64ComprovanteAtual) { alert('Você precisa anexar uma foto ou imagem do comprovante!'); return; }
+                
+                await push(ref(db, 'despesas_financeiras'), {
+                    data: document.getElementById('despesa-data').value, valor: parseFloat(document.getElementById('despesa-valor').value),
+                    motivo: document.getElementById('despesa-motivo').value.trim(), comprovante: base64ComprovanteAtual, user_lancamento: currentUser.login, timestamp: new Date().toISOString()
+                });
+                
+                // Opcional: Alimentar Estoque Fracionado direto
+                if(document.getElementById('despesa-add-estoque').checked) {
+                    const nomeItem = document.getElementById('despesa-item-estoque').value;
+                    const qtdItem = parseFloat(document.getElementById('despesa-qtd-estoque').value);
+                    if(nomeItem && qtdItem > 0) {
+                        let prodId = Object.keys(estoqueFracionado).find(id => estoqueFracionado[id].nome === nomeItem);
+                        if (prodId) {
+                            const novaQtd = parseFloat(estoqueFracionado[prodId].qtd) + qtdItem;
+                            await update(ref(db, `estoque_fracionado/produtos/${prodId}`), { qtd: novaQtd });
+                        } else {
+                            await push(ref(db, 'estoque_fracionado/produtos'), { nome: nomeItem, qtd: qtdItem });
+                        }
+                    }
+                }
+                
+                alert('Saída registrada e comprovante salvo com sucesso!'); e.target.reset(); base64ComprovanteAtual = '';
+                document.getElementById('preview-despesa-comprovante').style.display = 'none'; document.getElementById('despesa-estoque-container').style.display = 'none';
+                document.querySelector('[data-sub="doador-dash"]').click(); // Vai pro dashboard
+            } finally { btn.disabled = false; btn.innerText = 'Registrar Despesa (Descontar do Caixa)'; }
+        });
+
+        window.verComprovante = (key) => {
+            const d = despesasGlobais[key];
+            if(d && d.comprovante) {
+                document.getElementById('img-comprovante-full').src = d.comprovante; document.getElementById('modal-ver-comprovante').style.display = 'flex';
+            } else { alert('Nenhum comprovante anexado a esta despesa.'); }
+        };
+
+        document.getElementById('form-cad-doador').addEventListener('submit', async (e) => {
+            e.preventDefault(); const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; 
+            try {
+                const nome = document.getElementById('cad-doador-nome').value.trim().toUpperCase();
+                await push(ref(db, 'doadores'), { nome: nome, tel: document.getElementById('cad-doador-tel').value, data_cad: new Date().toISOString() });
+                alert('Parceiro Cadastrado!'); e.target.reset(); document.querySelector('[data-sub="doador-lanc"]').click();
+            } finally { btn.disabled = false; }
+        });
+
+        function preencherListaDoadores() {
+            const dl = document.getElementById('lista-doadores'); dl.innerHTML = '';
+            Object.values(dadosDoadoresGlobais).forEach(d => { dl.innerHTML += `<option value="${d.nome}">`; });
+        }
+
         function atualizarDashDoadores() {
-            let trHTML = '';
+            let trEntradas = ''; let trSaidas = '';
+            
+            // Entradas
             Object.keys(doacoesParceirosGlobais).reverse().forEach(key => {
                 const d = doacoesParceirosGlobais[key];
-                trHTML += `<tr><td>${formatarDataBR(d.data)}</td><td style="font-weight:bold; color: var(--primary);">${d.nome_doador}</td><td>${d.item}</td><td>${d.qtd} unid.</td><td>${formatarDinheiro(d.valor)}</td></tr>`;
+                trEntradas += `<tr><td>${formatarDataBR(d.data)}</td><td style="font-weight:bold; color: var(--primary);">${d.nome_doador}</td><td>${d.item}</td><td>${d.qtd} unid.</td><td>${formatarDinheiro(d.valor)}</td></tr>`;
             });
-            document.getElementById('tabela-doacoes-recebidas').innerHTML = trHTML || '<tr><td colspan="5" align="center">Nenhum registro.</td></tr>';
+            document.getElementById('tabela-doacoes-recebidas').innerHTML = trEntradas || '<tr><td colspan="5" align="center">Nenhuma entrada registrada.</td></tr>';
+            
+            // Saídas
+            Object.keys(despesasGlobais).reverse().forEach(key => {
+                const d = despesasGlobais[key];
+                trSaidas += `<tr><td>${formatarDataBR(d.data)}</td><td>${d.motivo}</td><td style="color: var(--danger); font-weight: bold;">- ${formatarDinheiro(d.valor)}</td><td>${d.user_lancamento.split('@')[0]}</td><td><button class="nav-btn" style="padding: 2px 8px;" onclick="verComprovante('${key}')">Ver Recibo</button></td></tr>`;
+            });
+            document.getElementById('tabela-despesas-realizadas').innerHTML = trSaidas || '<tr><td colspan="5" align="center">Nenhuma saída registrada.</td></tr>';
         }
+
+        // ==========================================
+        // MÓDULO ESTOQUE FRACIONADO E MONTAGEM
+        // ==========================================
+        document.querySelectorAll('#view-fracionado .sub-nav .nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('#view-fracionado .sub-nav .nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#view-fracionado .sub-view').forEach(v => v.classList.remove('active'));
+                e.target.classList.add('active'); document.getElementById(e.target.dataset.sub).classList.add('active');
+            });
+        });
+
+        document.getElementById('form-add-frac').addEventListener('submit', async (e) => {
+            e.preventDefault(); const btn = e.target.querySelector('button'); btn.disabled = true;
+            try {
+                const nome = document.getElementById('frac-nome').value.trim().toUpperCase(); const qtdAdicionar = parseFloat(document.getElementById('frac-qtd').value);
+                let prodId = Object.keys(estoqueFracionado).find(id => estoqueFracionado[id].nome === nome);
+                if (prodId) {
+                    const novaQtd = parseFloat(estoqueFracionado[prodId].qtd) + qtdAdicionar; await update(ref(db, `estoque_fracionado/produtos/${prodId}`), { qtd: novaQtd });
+                } else { await push(ref(db, 'estoque_fracionado/produtos'), { nome, qtd: qtdAdicionar }); }
+                document.getElementById('form-add-frac').reset(); document.getElementById('frac-qtd').value = 1;
+            } finally { btn.disabled = false; }
+        });
+
+        function atualizarTabelaFracionado() {
+            const tb = document.getElementById('tabela-frac-estoque'); tb.innerHTML = ''; const chaves = Object.keys(estoqueFracionado);
+            if(chaves.length === 0) { tb.innerHTML = '<tr><td colspan="3" align="center" style="padding:1rem;">Estoque Vazio.</td></tr>'; return; }
+            chaves.forEach(id => {
+                const p = estoqueFracionado[id]; const qtd = parseFloat(p.qtd); let classeEst = '';
+                if (qtd === 0) classeEst = 'estoque-zerado'; else if (qtd <= 5) classeEst = 'estoque-baixo';
+                tb.innerHTML += `<tr class="${classeEst}"><td style="font-weight:bold;">${p.nome}</td><td>${qtd} un.</td><td><button class="nav-btn" style="padding:2px 8px; font-size:0.8rem; margin-right:5px; border-color:#6b7280; color:#374151; background:#fff;" onclick="ajustarQtdFrac('${id}')">✏️ Ajustar</button><button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="removerFrac('${id}')">X</button></td></tr>`;
+            });
+        }
+        
+        window.ajustarQtdFrac = async (id) => {
+            const p = estoqueFracionado[id]; const nova = prompt(`Defina a quantidade EXATA (atual = ${p.qtd}) para o produto: ${p.nome}`, p.qtd);
+            if(nova !== null && nova.trim() !== '') { await update(ref(db, `estoque_fracionado/produtos/${id}`), { qtd: parseFloat(nova) }); }
+        };
+        window.removerFrac = async (id) => { if(confirm('Remover produto do estoque fracionado?')) { await remove(ref(db, `estoque_fracionado/produtos/${id}`)); } };
+
+        function preencherSelectModeloCesta() {
+            const sel = document.getElementById('modelo-produto'); sel.innerHTML = '';
+            const selD = document.getElementById('despesa-item-estoque'); selD.innerHTML = ''; // Popula também o do financeiro
+            Object.values(estoqueFracionado).forEach(p => { 
+                sel.innerHTML += `<option value="${p.nome}">${p.nome}</option>`; 
+                selD.innerHTML += `<option value="${p.nome}">${p.nome}</option>`; 
+            });
+        }
+
+        document.getElementById('form-add-modelo').addEventListener('submit', async (e) => {
+            e.preventDefault(); const btn = e.target.querySelector('button'); btn.disabled = true;
+            try {
+                const nome = document.getElementById('modelo-produto').value; const qtd = parseFloat(document.getElementById('modelo-qtd').value);
+                if(!nome) { alert('Cadastre itens no estoque fracionado primeiro.'); return; }
+                let idProd = Object.keys(modeloCesta).find(id => modeloCesta[id].nome === nome);
+                if (idProd) { await update(ref(db, `estoque_fracionado/modelo/${idProd}`), { qtd: qtd }); } 
+                else { await push(ref(db, 'estoque_fracionado/modelo'), { nome, qtd }); }
+                document.getElementById('modelo-qtd').value = 1;
+            } finally { btn.disabled = false; }
+        });
+
+        function atualizarTabelaModelo() {
+            const tb = document.getElementById('tabela-frac-modelo'); tb.innerHTML = ''; const chaves = Object.keys(modeloCesta);
+            if(chaves.length === 0) { tb.innerHTML = '<tr><td colspan="3" align="center" style="padding:1rem;">Nenhum item na receita da cesta.</td></tr>'; return; }
+            chaves.forEach(id => { const p = modeloCesta[id]; tb.innerHTML += `<tr><td style="font-weight:bold; color:var(--primary);">${p.nome}</td><td>${p.qtd} unidade(s) por Cesta</td><td><button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="removerItemModelo('${id}')">Remover</button></td></tr>`; });
+        }
+        window.removerItemModelo = async (id) => { if(confirm('Remover este item da Cesta Básica?')) { await remove(ref(db, `estoque_fracionado/modelo/${id}`)); } };
+
+        document.getElementById('btn-simular-gerar').addEventListener('click', () => {
+            const qtdCestas = parseInt(document.getElementById('gerar-qtd-cestas').value) || 0; const logDiv = document.getElementById('gerar-log');
+            if (qtdCestas <= 0) return;
+            if (Object.keys(modeloCesta).length === 0) { logDiv.innerHTML = '<span style="color:var(--danger); font-weight:bold;">⚠️ Defina os itens da Cesta primeiro.</span>'; return; }
+
+            let isPossivel = true; let logHtml = `<h4 style="margin-bottom:10px;">Simulação para gerar ${qtdCestas} Cesta(s):</h4><ul style="list-style:none; padding:0; margin:0;">`;
+            for (let key in modeloCesta) {
+                const itemModelo = modeloCesta[key]; const qtdNecessaria = itemModelo.qtd * qtdCestas;
+                let prodKey = Object.keys(estoqueFracionado).find(k => estoqueFracionado[k].nome === itemModelo.nome);
+                let qtdEstoque = prodKey ? parseFloat(estoqueFracionado[prodKey].qtd) : 0;
+
+                if (qtdEstoque >= qtdNecessaria) {
+                    logHtml += `<li style="color: var(--success); margin-bottom:8px; padding:5px; border-bottom:1px solid #e5e7eb;">✔️ <b>${itemModelo.nome}:</b> Necessita ${qtdNecessaria} | Tem ${qtdEstoque}</li>`;
+                } else {
+                    isPossivel = false; let falta = qtdNecessaria - qtdEstoque;
+                    logHtml += `<li style="color: var(--danger); margin-bottom:8px; padding:5px; border-bottom:1px solid #e5e7eb; background:#fee2e2; border-radius:4px;">❌ <b>${itemModelo.nome}:</b> Necessita ${qtdNecessaria} | Tem ${qtdEstoque} <br><small style="font-weight:bold;">(Faltam + ${falta} unid)</small></li>`;
+                }
+            }
+            logDiv.innerHTML = logHtml + '</ul>'; document.getElementById('btn-confirmar-gerar').disabled = !isPossivel;
+        });
+
+        document.getElementById('btn-confirmar-gerar').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-confirmar-gerar'); btn.disabled = true; btn.innerText = 'Processando...';
+            try {
+                const qtdCestas = parseInt(document.getElementById('gerar-qtd-cestas').value); const nomeDoador = document.getElementById('gerar-doador').value.toUpperCase(); const dataRef = document.getElementById('gerar-data').value;
+                if(!nomeDoador) { alert('Informe quem montou as cestas.'); btn.disabled = false; btn.innerText = '✅ Confirmar Montagem'; return; }
+
+                let idDoador = Object.keys(dadosDoadoresGlobais).find(id => dadosDoadoresGlobais[id].nome === nomeDoador);
+                if(!idDoador) { const res = await push(ref(db, 'doadores'), { nome: nomeDoador, tel: 'N/A', data_cad: new Date().toISOString() }); idDoador = res.key; }
+
+                for (let key in modeloCesta) {
+                    const itemModelo = modeloCesta[key]; const qtdNecessaria = itemModelo.qtd * qtdCestas;
+                    let prodKey = Object.keys(estoqueFracionado).find(k => estoqueFracionado[k].nome === itemModelo.nome);
+                    if(prodKey) { let novaQtd = parseFloat(estoqueFracionado[prodKey].qtd) - qtdNecessaria; await update(ref(db, `estoque_fracionado/produtos/${prodKey}`), { qtd: novaQtd }); }
+                }
+
+                await push(ref(db, 'doacoes_parceiros'), { id_doador: idDoador, nome_doador: nomeDoador, data: dataRef, item: "Cesta Básica", qtd: qtdCestas, valor: 0, user_lancamento: currentUser.login + " (Montagem)" });
+                alert(`${qtdCestas} Cestas geradas com sucesso! Itens descontados.`);
+                document.getElementById('gerar-qtd-cestas').value = '1'; document.getElementById('gerar-doador').value = ''; document.getElementById('gerar-log').innerHTML = '<em>Preencha a quantidade e clique em Verificar.</em>';
+            } finally { btn.innerText = '✅ Confirmar Montagem e Enviar para Estoque Principal'; }
+        });
 
         // ==========================================
         // RESTANTE (CADASTRO, RASCUNHO, EDIÇÃO)
@@ -1005,17 +976,7 @@
         function salvarRascunhoForm() {
             if (editandoFamiliaId) return;
             const r = { nome: document.getElementById('cad-nome').value, idade: document.getElementById('cad-idade').value, sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value, telefone: document.getElementById('cad-telefone').value, condicoes: document.getElementById('cad-condicoes').value, dependentes: [] };
-            
-            document.querySelectorAll('.dependente-item').forEach(i => { 
-                const id = i.id.split('-')[1]; 
-                r.dependentes.push({ 
-                    nome: document.getElementById(`dep-nome-${id}`).value, 
-                    parentesco: document.getElementById(`dep-parentesco-${id}`).value,
-                    idade: document.getElementById(`dep-idade-${id}`).value, 
-                    sexo: document.getElementById(`dep-sexo-${id}`).value, 
-                    condicoes: document.getElementById(`dep-cond-${id}`).value 
-                }); 
-            });
+            document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; r.dependentes.push({ nome: document.getElementById(`dep-nome-${id}`).value, parentesco: document.getElementById(`dep-parentesco-${id}`).value, idade: document.getElementById(`dep-idade-${id}`).value, sexo: document.getElementById(`dep-sexo-${id}`).value, condicoes: document.getElementById(`dep-cond-${id}`).value }); });
             localStorage.setItem('rascunhoCadastro', JSON.stringify(r));
         }
         document.getElementById('form-cadastro').addEventListener('input', salvarRascunhoForm);
@@ -1029,110 +990,39 @@
         
         function criarDependenteDOM(n = '', p = 'Filho(a)', i = '', s = 'Masculino', c = '') {
             dependentesCount++; const div = document.createElement('div'); div.className = 'dependente-item'; div.id = `dep-${dependentesCount}`;
-            div.innerHTML = `
-                <div><label>Nome</label><input type="text" id="dep-nome-${dependentesCount}" value="${n}" required></div>
-                <div><label>Parentesco</label>
-                    <select id="dep-parentesco-${dependentesCount}">
-                        <option value="Filho(a)" ${p==='Filho(a)'?'selected':''}>Filho(a)</option>
-                        <option value="Cônjuge" ${p==='Cônjuge'?'selected':''}>Cônjuge</option>
-                        <option value="Irmão(ã)" ${p==='Irmão(ã)'?'selected':''}>Irmão(ã)</option>
-                        <option value="Neto(a)" ${p==='Neto(a)'?'selected':''}>Neto(a)</option>
-                        <option value="Sobrinho(a)" ${p==='Sobrinho(a)'?'selected':''}>Sobrinho(a)</option>
-                        <option value="Genro/Nora" ${p==='Genro/Nora'?'selected':''}>Genro/Nora</option>
-                        <option value="Sogro(a)" ${p==='Sogro(a)'?'selected':''}>Sogro(a)</option>
-                        <option value="Enteado(a)" ${p==='Enteado(a)'?'selected':''}>Enteado(a)</option>
-                        <option value="Outro" ${p==='Outro'?'selected':''}>Outro</option>
-                    </select>
-                </div>
-                <div><label>Idade</label><input type="number" id="dep-idade-${dependentesCount}" min="0" value="${i}" required></div>
-                <div><label>Sexo</label><select id="dep-sexo-${dependentesCount}"><option value="Masculino" ${s==='Masculino'?'selected':''}>M</option><option value="Feminino" ${s==='Feminino'?'selected':''}>F</option></select></div>
-                <div><label>Condição (Opcional)</label><input type="text" id="dep-cond-${dependentesCount}" value="${c}" placeholder="Ex: Autista..."></div>
-                <button type="button" class="danger" onclick="this.parentElement.remove(); salvarRascunhoForm();">X</button>
-            `;
+            div.innerHTML = `<div><label>Nome</label><input type="text" id="dep-nome-${dependentesCount}" value="${n}" required></div><div><label>Parentesco</label><select id="dep-parentesco-${dependentesCount}"><option value="Filho(a)" ${p==='Filho(a)'?'selected':''}>Filho(a)</option><option value="Cônjuge" ${p==='Cônjuge'?'selected':''}>Cônjuge</option><option value="Irmão(ã)" ${p==='Irmão(ã)'?'selected':''}>Irmão(ã)</option><option value="Neto(a)" ${p==='Neto(a)'?'selected':''}>Neto(a)</option><option value="Sobrinho(a)" ${p==='Sobrinho(a)'?'selected':''}>Sobrinho(a)</option><option value="Genro/Nora" ${p==='Genro/Nora'?'selected':''}>Genro/Nora</option><option value="Sogro(a)" ${p==='Sogro(a)'?'selected':''}>Sogro(a)</option><option value="Enteado(a)" ${p==='Enteado(a)'?'selected':''}>Enteado(a)</option><option value="Outro" ${p==='Outro'?'selected':''}>Outro</option></select></div><div><label>Idade</label><input type="number" id="dep-idade-${dependentesCount}" min="0" value="${i}" required></div><div><label>Sexo</label><select id="dep-sexo-${dependentesCount}"><option value="Masculino" ${s==='Masculino'?'selected':''}>M</option><option value="Feminino" ${s==='Feminino'?'selected':''}>F</option></select></div><div><label>Condição (Opcional)</label><input type="text" id="dep-cond-${dependentesCount}" value="${c}" placeholder="Ex: Autista..."></div><button type="button" class="danger" onclick="this.parentElement.remove(); salvarRascunhoForm();">X</button>`;
             document.getElementById('dependentes-list').appendChild(div);
         }
 
         document.getElementById('btn-add-dependente').addEventListener('click', () => { criarDependenteDOM(); salvarRascunhoForm(); });
 
         window.resetarFormCadastro = (voltarParaRascunho = false) => {
-            document.getElementById('form-cadastro').reset();
-            document.getElementById('dependentes-list').innerHTML = '';
-            document.getElementById('titulo-cadastro').innerText = 'Cadastrar Nova Família';
-            document.getElementById('btn-submit-cadastro').innerText = 'Salvar Cadastro Completo';
-            document.getElementById('btn-cancelar-edicao').style.display = 'none';
-            editandoFamiliaId = null;
-            dependentesCount = 0;
-            if(voltarParaRascunho) carregarRascunhoForm();
+            document.getElementById('form-cadastro').reset(); document.getElementById('dependentes-list').innerHTML = ''; document.getElementById('titulo-cadastro').innerText = 'Cadastrar Nova Família'; document.getElementById('btn-submit-cadastro').innerText = 'Salvar Cadastro Completo'; document.getElementById('btn-cancelar-edicao').style.display = 'none';
+            editandoFamiliaId = null; dependentesCount = 0; if(voltarParaRascunho) carregarRascunhoForm();
         }
 
         window.carregarFamiliaParaEdicao = (id) => {
-            editandoFamiliaId = id;
-            const f = dadosFamiliasGlobais[id];
-            document.getElementById('cad-nome').value = f.responsavel.nome;
-            document.getElementById('cad-idade').value = f.responsavel.idade;
-            document.getElementById('cad-sexo').value = f.responsavel.sexo;
-            document.getElementById('cad-endereco').value = f.responsavel.endereco;
-            document.getElementById('cad-bairro').value = f.responsavel.bairro;
-            document.getElementById('cad-telefone').value = f.responsavel.telefone;
-            document.getElementById('cad-condicoes').value = f.responsavel.condicoes || '';
-            
-            document.getElementById('dependentes-list').innerHTML = '';
-            dependentesCount = 0;
-            if(f.dependentes) {
-                for(let k in f.dependentes) {
-                    const d = f.dependentes[k];
-                    criarDependenteDOM(d.nome, d.parentesco || 'Outro', d.idade, d.sexo, d.condicoes);
-                }
-            }
-            
-            document.getElementById('titulo-cadastro').innerText = 'Editar Cadastro: ' + f.responsavel.nome;
-            document.getElementById('btn-submit-cadastro').innerText = '💾 Salvar Alterações';
-            document.getElementById('btn-cancelar-edicao').style.display = 'block';
-            
-            fecharModal('modal-familia');
-            document.querySelector('[data-target="view-cadastro"]').click();
+            editandoFamiliaId = id; const f = dadosFamiliasGlobais[id];
+            document.getElementById('cad-nome').value = f.responsavel.nome; document.getElementById('cad-idade').value = f.responsavel.idade; document.getElementById('cad-sexo').value = f.responsavel.sexo; document.getElementById('cad-endereco').value = f.responsavel.endereco; document.getElementById('cad-bairro').value = f.responsavel.bairro; document.getElementById('cad-telefone').value = f.responsavel.telefone; document.getElementById('cad-condicoes').value = f.responsavel.condicoes || '';
+            document.getElementById('dependentes-list').innerHTML = ''; dependentesCount = 0;
+            if(f.dependentes) { for(let k in f.dependentes) { const d = f.dependentes[k]; criarDependenteDOM(d.nome, d.parentesco || 'Outro', d.idade, d.sexo, d.condicoes); } }
+            document.getElementById('titulo-cadastro').innerText = 'Editar Cadastro: ' + f.responsavel.nome; document.getElementById('btn-submit-cadastro').innerText = '💾 Salvar Alterações'; document.getElementById('btn-cancelar-edicao').style.display = 'block';
+            fecharModal('modal-familia'); document.querySelector('[data-target="view-cadastro"]').click();
         };
 
         document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
-            e.preventDefault(); 
-            const btn = document.getElementById('btn-submit-cadastro');
-            btn.disabled = true; 
-            const txtOriginal = btn.innerText;
-            btn.innerText = 'Processando...';
-            
+            e.preventDefault(); const btn = document.getElementById('btn-submit-cadastro'); btn.disabled = true; const txtOriginal = btn.innerText; btn.innerText = 'Processando...';
             try {
-                const idR = document.getElementById('cad-idade').value;
-                const condR = document.getElementById('cad-condicoes').value.trim();
+                const idR = document.getElementById('cad-idade').value; const condR = document.getElementById('cad-condicoes').value.trim();
                 const nf = { responsavel: { nome: document.getElementById('cad-nome').value.toUpperCase(), idade: idR, classificacao: classificarIdadePura(idR), sexo: document.getElementById('cad-sexo').value, endereco: document.getElementById('cad-endereco').value, bairro: document.getElementById('cad-bairro').value.toUpperCase(), telefone: document.getElementById('cad-telefone').value, condicoes: condR, data_cadastro: editandoFamiliaId ? dadosFamiliasGlobais[editandoFamiliaId].responsavel.data_cadastro : new Date().toISOString() }, dependentes: {} };
-                
-                document.querySelectorAll('.dependente-item').forEach(i => { 
-                    const id = i.id.split('-')[1]; 
-                    const idD = document.getElementById(`dep-idade-${id}`).value; 
-                    const condD = document.getElementById(`dep-cond-${id}`).value.trim(); 
-                    const parD = document.getElementById(`dep-parentesco-${id}`).value;
-                    nf.dependentes[push(ref(db, 'temp')).key] = { 
-                        nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), 
-                        parentesco: parD, 
-                        idade: idD, 
-                        sexo: document.getElementById(`dep-sexo-${id}`).value, 
-                        classificacao: classificarIdadePura(idD), 
-                        condicoes: condD 
-                    }; 
+                document.querySelectorAll('.dependente-item').forEach(i => { const id = i.id.split('-')[1]; const idD = document.getElementById(`dep-idade-${id}`).value; const condD = document.getElementById(`dep-cond-${id}`).value.trim(); const parD = document.getElementById(`dep-parentesco-${id}`).value;
+                    nf.dependentes[push(ref(db, 'temp')).key] = { nome: document.getElementById(`dep-nome-${id}`).value.toUpperCase(), parentesco: parD, idade: idD, sexo: document.getElementById(`dep-sexo-${id}`).value, classificacao: classificarIdadePura(idD), condicoes: condD }; 
                 });
                 
-                if (editandoFamiliaId) {
-                    await update(ref(db, 'cadastro/' + editandoFamiliaId), { responsavel: nf.responsavel, dependentes: nf.dependentes });
-                    alert('Cadastro atualizado com sucesso!');
-                } else {
-                    await push(ref(db, 'cadastro'), nf);
-                    alert('Família cadastrada com sucesso!');
-                }
-                
+                if (editandoFamiliaId) { await update(ref(db, 'cadastro/' + editandoFamiliaId), { responsavel: nf.responsavel, dependentes: nf.dependentes }); alert('Cadastro atualizado com sucesso!'); } 
+                else { await push(ref(db, 'cadastro'), nf); alert('Família cadastrada com sucesso!'); }
                 window.resetarFormCadastro(); 
-            } finally {
-                btn.disabled = false;
-                btn.innerText = txtOriginal;
-            }
+            } finally { btn.disabled = false; btn.innerText = txtOriginal; }
         });
 
         // ==========================================
@@ -1151,178 +1041,74 @@
         }
 
         function configurarBuscaRapida() {
-            const buscaInput = document.getElementById('busca-familia-input');
-            const buscaResultados = document.getElementById('busca-familia-resultados');
-
+            const buscaInput = document.getElementById('busca-familia-input'); const buscaResultados = document.getElementById('busca-familia-resultados');
             buscaInput.addEventListener('input', () => {
                 const termo = buscaInput.value.trim().toLowerCase();
-                if (!termo) {
-                    buscaResultados.style.display = 'none';
-                    buscaResultados.innerHTML = '';
-                    return;
-                }
-
-                const termoNumeros = termo.replace(/\D/g, '');
-                const matches = [];
-
+                if (!termo) { buscaResultados.style.display = 'none'; buscaResultados.innerHTML = ''; return; }
+                const termoNumeros = termo.replace(/\D/g, ''); const matches = [];
                 for (let id in dadosFamiliasGlobais) {
-                    const f = dadosFamiliasGlobais[id];
-                    if (!f || !f.responsavel) continue;
-                    
-                    const nome = (f.responsavel.nome || '').toLowerCase();
-                    const tel = (f.responsavel.telefone || '').replace(/\D/g, '');
-
-                    const matchNome = nome.includes(termo);
-                    const matchTel = termoNumeros.length > 0 && tel.includes(termoNumeros);
-
-                    if (matchNome || matchTel) {
-                        matches.push({ id, ...f });
-                    }
+                    const f = dadosFamiliasGlobais[id]; if (!f || !f.responsavel) continue;
+                    const nome = (f.responsavel.nome || '').toLowerCase(); const tel = (f.responsavel.telefone || '').replace(/\D/g, '');
+                    if (nome.includes(termo) || (termoNumeros.length > 0 && tel.includes(termoNumeros))) matches.push({ id, ...f });
                 }
-
-                if (matches.length === 0) {
-                    buscaResultados.innerHTML = '<div style="padding: 12px; font-size: 0.85rem; color: #888; text-align: center;">Nenhuma família encontrada.</div>';
-                    buscaResultados.style.display = 'block';
-                    return;
-                }
-
-                let html = '';
-                matches.slice(0, 15).forEach(m => {
-                    html += `
-                        <div class="busca-item-resultado" onclick="window.abrirFamiliaPelaBusca('${m.id}')">
-                            <div style="font-weight: bold; color: var(--primary); font-size: 0.95rem;">${m.responsavel.nome}</div>
-                            <div style="font-size: 0.8rem; color: #555;">📍 ${m.responsavel.bairro} | 📞 ${m.responsavel.telefone}</div>
-                        </div>
-                    `;
-                });
-                buscaResultados.innerHTML = html;
-                buscaResultados.style.display = 'block';
+                if (matches.length === 0) { buscaResultados.innerHTML = '<div style="padding: 12px; font-size: 0.85rem; color: #888; text-align: center;">Nenhuma família encontrada.</div>'; buscaResultados.style.display = 'block'; return; }
+                let html = ''; matches.slice(0, 15).forEach(m => { html += `<div class="busca-item-resultado" onclick="window.abrirFamiliaPelaBusca('${m.id}')"><div style="font-weight: bold; color: var(--primary); font-size: 0.95rem;">${m.responsavel.nome}</div><div style="font-size: 0.8rem; color: #555;">📍 ${m.responsavel.bairro} | 📞 ${m.responsavel.telefone}</div></div>`; });
+                buscaResultados.innerHTML = html; buscaResultados.style.display = 'block';
             });
-
-            buscaInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const primeiroItem = buscaResultados.querySelector('.busca-item-resultado');
-                    if (primeiroItem) primeiroItem.click();
-                }
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!buscaInput.contains(e.target) && !buscaResultados.contains(e.target)) {
-                    buscaResultados.style.display = 'none';
-                }
-            });
+            document.addEventListener('click', (e) => { if (!buscaInput.contains(e.target) && !buscaResultados.contains(e.target)) buscaResultados.style.display = 'none'; });
         }
-
-        window.abrirFamiliaPelaBusca = (id) => {
-            const buscaInput = document.getElementById('busca-familia-input');
-            const buscaResultados = document.getElementById('busca-familia-resultados');
-            buscaResultados.style.display = 'none';
-            buscaInput.value = '';
-            abrirModalFamilia(id);
-        };
-
-        window.fecharModal = (id) => document.getElementById(id).style.display = 'none';
+        window.abrirFamiliaPelaBusca = (id) => { document.getElementById('busca-familia-resultados').style.display = 'none'; document.getElementById('busca-familia-input').value = ''; abrirModalFamilia(id); };
         
         window.abrirModalFamilia = (id) => {
             familiaAtualId = id; const f = dadosFamiliasGlobais[id]; let dH = '';
-            
             if(f.dependentes) { 
                 dH = '<strong>Dependentes:</strong><ul style="margin-top:5px;">'; 
                 for(let k in f.dependentes) { 
-                    const d = f.dependentes[k]; 
-                    const tagCond = d.condicoes ? `<span style="color: #92400e; font-weight: bold; background: #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">⚠️ ${d.condicoes}</span>` : '';
-                    
+                    const d = f.dependentes[k]; const tagCond = d.condicoes ? `<span style="color: #92400e; font-weight: bold; background: #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">⚠️ ${d.condicoes}</span>` : '';
                     const txtPar = d.parentesco ? `<span style="color:#6b7280; font-size:0.9em; margin-left:4px;">(${d.parentesco})</span>` : '';
-                    
                     dH += `<li>${d.nome} ${txtPar} - ${formatarIdade(d.idade)} - ${d.sexo} ${tagCond}</li>`; 
-                } 
-                dH += '</ul>'; 
+                } dH += '</ul>'; 
             }
-            
             const respCond = f.responsavel.condicoes ? `<div style="color: #92400e; font-weight: bold; background: #fde68a; padding: 8px; border-radius: 4px; font-size: 0.9em; margin-top: 10px; display: inline-block;">⚠️ Necessidade Especial: ${f.responsavel.condicoes}</div>` : '';
-            
             const btnEditar = currentUser.perm_cadastro ? `<button onclick="carregarFamiliaParaEdicao('${id}')" class="nav-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px; border-color:var(--warning); color:var(--warning);">✏️ Editar</button>` : '';
 
-            document.getElementById('detalhes-familia-header').innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h2 style="color: var(--primary); margin-bottom: 0.5rem;">${f.responsavel.nome}</h2>
-                    ${btnEditar}
-                </div>
-                <p><strong>Idade:</strong> ${formatarIdade(f.responsavel.idade)} | <strong>Sexo:</strong> ${f.responsavel.sexo}</p>
-                <p><strong>Endereço:</strong> ${f.responsavel.endereco}, ${f.responsavel.bairro} | <strong>Tel:</strong> ${f.responsavel.telefone}</p>
-                ${respCond}
-                ${dH ? `<div style="margin-top: 1rem; background: #f9fafb; padding: 1rem; border-radius: 4px;">${dH}</div>` : ''}
-            `;
-            atualizarHistoricoDOM(id); 
-            document.getElementById('modal-familia').style.display = 'flex';
+            document.getElementById('detalhes-familia-header').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h2 style="color: var(--primary); margin-bottom: 0.5rem;">${f.responsavel.nome}</h2>${btnEditar}</div><p><strong>Idade:</strong> ${formatarIdade(f.responsavel.idade)} | <strong>Sexo:</strong> ${f.responsavel.sexo}</p><p><strong>Endereço:</strong> ${f.responsavel.endereco}, ${f.responsavel.bairro} | <strong>Tel:</strong> ${f.responsavel.telefone}</p>${respCond}${dH ? `<div style="margin-top: 1rem; background: #f9fafb; padding: 1rem; border-radius: 4px;">${dH}</div>` : ''}`;
+            atualizarHistoricoDOM(id); document.getElementById('modal-familia').style.display = 'flex';
         }
-        
         function abrirModalLista(b, fs) {
             document.getElementById('modal-lista-titulo').innerText = `Famílias - ${b}`; const ul = document.getElementById('modal-lista-ul'); ul.innerHTML = '';
             fs.forEach(f => { const li = document.createElement('li'); li.innerHTML = `<strong>${f.responsavel.nome}</strong> <span>Tel: ${f.responsavel.telefone}</span>`; li.addEventListener('click', () => abrirModalFamilia(f.id)); ul.appendChild(li); });
             document.getElementById('modal-lista').style.display = 'flex';
         }
 
-        window.removerDoacaoFixa = async (id, tipo) => {
-            if(confirm(`Tem certeza que deseja cancelar a doação fixa de ${tipo} para esta família?`)) {
-                await remove(ref(db, `cadastro/${id}/ajudas_fixas/${tipo}`));
-            }
-        };
+        window.removerDoacaoFixa = async (id, tipo) => { if(confirm(`Cancelar a doação fixa de ${tipo}?`)) { await remove(ref(db, `cadastro/${id}/ajudas_fixas/${tipo}`)); } };
 
         function atualizarHistoricoDOM(idFam) {
-            const f = dadosFamiliasGlobais[idFam];
-            const h = f?.historico_ajuda;
-            const hD = document.getElementById('historico-lista'); hD.innerHTML = ''; 
-            
+            const f = dadosFamiliasGlobais[idFam]; const h = f?.historico_ajuda; const hD = document.getElementById('historico-lista'); hD.innerHTML = ''; 
             let fixasHTML = '';
             if(f.ajudas_fixas) {
-                for(let t in f.ajudas_fixas) {
-                    fixasHTML += `<span style="background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:12px; font-size:0.85rem; margin-right:5px; display:inline-block; margin-bottom:5px; border:1px solid #bae6fd;">🔄 ${t} (a cada ${f.ajudas_fixas[t].intervalo_dias} dias) <button type="button" onclick="removerDoacaoFixa('${idFam}', '${t}')" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold; margin-left:5px;">x</button></span>`;
-                }
+                for(let t in f.ajudas_fixas) { fixasHTML += `<span style="background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:12px; font-size:0.85rem; margin-right:5px; display:inline-block; margin-bottom:5px; border:1px solid #bae6fd;">🔄 ${t} (a cada ${f.ajudas_fixas[t].intervalo_dias} dias) <button type="button" onclick="removerDoacaoFixa('${idFam}', '${t}')" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold; margin-left:5px;">x</button></span>`; }
             }
-            if(fixasHTML) {
-                hD.innerHTML = `<div style="margin-bottom:1rem; padding: 10px; border-left: 3px solid #0ea5e9; background: #f8fafc;"><strong>✅ Doações Fixas Ativas:</strong><br><div style="margin-top:5px;">${fixasHTML}</div></div>`;
-            }
+            if(fixasHTML) { hD.innerHTML = `<div style="margin-bottom:1rem; padding: 10px; border-left: 3px solid #0ea5e9; background: #f8fafc;"><strong>✅ Doações Fixas Ativas:</strong><br><div style="margin-top:5px;">${fixasHTML}</div></div>`; }
 
             if(!h) { hD.innerHTML += '<p>Nenhuma ajuda registrada no histórico.</p>'; return; }
             Object.keys(h).reverse().forEach(k => { const i = h[k]; hD.innerHTML += `<div class="historico-item"><strong style="color:var(--primary)">${i.tipo}</strong> (Qtd: ${i.qtd||1} | ${formatarDinheiro(i.valor)})<br><small>Data Ref: <b>${formatarDataBR(i.data_ref)}</b> | Lançado por: ${i.user_cadastro}</small><p style="margin-top:5px; font-size: 0.9rem;">${i.observacao}</p></div>`; });
         }
         
-        document.getElementById('ajuda-recorrente').addEventListener('change', (e) => {
-            document.getElementById('ajuda-recorrente-dias-container').style.display = e.target.checked ? 'block' : 'none';
-        });
+        document.getElementById('ajuda-recorrente').addEventListener('change', (e) => { document.getElementById('ajuda-recorrente-dias-container').style.display = e.target.checked ? 'block' : 'none'; });
 
-        // Saída de Ajuda e Cadastro de Fixa
         document.getElementById('form-ajuda').addEventListener('submit', async (e) => {
             e.preventDefault(); if(!familiaAtualId) return;
-            
-            const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true; 
-            const txtOriginal = btn.innerText;
-            btn.innerText = 'Baixando...';
-
+            const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true; const txtOriginal = btn.innerText; btn.innerText = 'Baixando...';
             try {
-                const tipoAjuda = document.getElementById('ajuda-tipo').value;
-                const dataRef = document.getElementById('ajuda-mes').value;
-                const isRecorrente = document.getElementById('ajuda-recorrente').checked;
-                const diasRecorrentes = parseInt(document.getElementById('ajuda-recorrente-dias').value) || 30;
-                const f = dadosFamiliasGlobais[familiaAtualId];
-
+                const tipoAjuda = document.getElementById('ajuda-tipo').value; const dataRef = document.getElementById('ajuda-mes').value; const isRecorrente = document.getElementById('ajuda-recorrente').checked; const diasRecorrentes = parseInt(document.getElementById('ajuda-recorrente-dias').value) || 30; const f = dadosFamiliasGlobais[familiaAtualId];
                 await push(ref(db, `cadastro/${familiaAtualId}/historico_ajuda`), { tipo: tipoAjuda, qtd: document.getElementById('ajuda-qtd').value, valor: document.getElementById('ajuda-valor').value, data_ref: dataRef, observacao: document.getElementById('ajuda-obs').value, timestamp: new Date().toISOString(), user_cadastro: currentUser.login }); 
                 
-                if (isRecorrente) {
-                    await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { intervalo_dias: diasRecorrentes, ultima_data: dataRef });
-                } else if (f.ajudas_fixas && f.ajudas_fixas[tipoAjuda]) {
-                    await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { ultima_data: dataRef });
-                }
+                if (isRecorrente) { await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { intervalo_dias: diasRecorrentes, ultima_data: dataRef }); } 
+                else if (f.ajudas_fixas && f.ajudas_fixas[tipoAjuda]) { await update(ref(db, `cadastro/${familiaAtualId}/ajudas_fixas/${tipoAjuda}`), { ultima_data: dataRef }); }
 
-                document.getElementById('ajuda-obs').value = ''; document.getElementById('ajuda-qtd').value = '1'; document.getElementById('ajuda-valor').value = '0.00';
-                document.getElementById('ajuda-recorrente').checked = false; document.getElementById('ajuda-recorrente-dias-container').style.display = 'none';
-            } finally {
-                btn.disabled = false;
-                btn.innerText = txtOriginal;
-            }
+                document.getElementById('ajuda-obs').value = ''; document.getElementById('ajuda-qtd').value = '1'; document.getElementById('ajuda-valor').value = '0.00'; document.getElementById('ajuda-recorrente').checked = false; document.getElementById('ajuda-recorrente-dias-container').style.display = 'none';
+            } finally { btn.disabled = false; btn.innerText = txtOriginal; }
         });
 
         // ==========================================
@@ -1335,40 +1121,18 @@
         
         function atualizarDashboard() {
             if(!document.getElementById('view-dashboard').classList.contains('active')) return;
-            
-            const hoje = new Date(); hoje.setHours(0,0,0,0);
-            let alertasHTML = '';
-
+            const hoje = new Date(); hoje.setHours(0,0,0,0); let alertasHTML = '';
             for(let id in dadosFamiliasGlobais) {
-                const fam = dadosFamiliasGlobais[id];
-                if (!fam || !fam.responsavel) continue;
-
+                const fam = dadosFamiliasGlobais[id]; if (!fam || !fam.responsavel) continue;
                 if(fam.ajudas_fixas) {
                     for(let tipo in fam.ajudas_fixas) {
-                        const fixa = fam.ajudas_fixas[tipo];
-                        if(!fixa.ultima_data) continue;
-                        
-                        const ultData = new Date(fixa.ultima_data + "T00:00:00");
-                        const proxData = new Date(ultData);
-                        proxData.setDate(proxData.getDate() + parseInt(fixa.intervalo_dias));
-
-                        const diffTime = proxData - hoje;
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+                        const fixa = fam.ajudas_fixas[tipo]; if(!fixa.ultima_data) continue;
+                        const proxData = new Date(fixa.ultima_data + "T00:00:00"); proxData.setDate(proxData.getDate() + parseInt(fixa.intervalo_dias));
+                        const diffDays = Math.ceil((proxData - hoje) / (1000 * 60 * 60 * 24));
                         if(diffDays <= 7) {
                             let cor = diffDays < 0 ? 'var(--danger)' : (diffDays === 0 ? 'var(--warning)' : '#0284c7');
                             let txtDias = diffDays < 0 ? `ATRASADO ${Math.abs(diffDays)} dia(s)` : (diffDays === 0 ? 'ENTREGAR HOJE!' : `Faltam ${diffDays} dia(s)`);
-                            
-                            alertasHTML += `<div class="alerta-item" style="border-left-color: ${cor};">
-                                <div>
-                                    <strong style="color:var(--primary); cursor:pointer; text-decoration:underline;" onclick="abrirModalFamilia('${id}')">${fam.responsavel.nome}</strong> 
-                                    - <span style="font-weight:bold;">${tipo}</span>
-                                    <br><small style="color:#666;">Bairro: ${fam.responsavel.bairro} | Tel: ${fam.responsavel.telefone}</small>
-                                </div>
-                                <div style="font-weight:bold; color: ${cor}; text-align:right;">
-                                    ${txtDias} <br><small>Previsto: ${formatarDataBR(proxData.toISOString().split('T')[0])}</small>
-                                </div>
-                            </div>`;
+                            alertasHTML += `<div class="alerta-item" style="border-left-color: ${cor};"><div><strong style="color:var(--primary); cursor:pointer; text-decoration:underline;" onclick="abrirModalFamilia('${id}')">${fam.responsavel.nome}</strong> - <span style="font-weight:bold;">${tipo}</span><br><small style="color:#666;">Bairro: ${fam.responsavel.bairro} | Tel: ${fam.responsavel.telefone}</small></div><div style="font-weight:bold; color: ${cor}; text-align:right;">${txtDias} <br><small>Previsto: ${formatarDataBR(proxData.toISOString().split('T')[0])}</small></div></div>`;
                         }
                     }
                 }
@@ -1380,11 +1144,9 @@
             for(let k in configGlobais.tipos_ajuda) tT[configGlobais.tipos_ajuda[k]] = 0;
             for(let id in dadosFamiliasGlobais) {
                 const fam = dadosFamiliasGlobais[id]; 
-                
                 if (!fam || !fam.responsavel || !fam.responsavel.bairro) continue; 
                 if(bF && !fam.responsavel.bairro.includes(bF)) continue; 
                 if(nF && !fam.responsavel.nome.includes(nF)) continue;
-                
                 if(fam.historico_ajuda) {
                     for(let hId in fam.historico_ajuda) {
                         const h = fam.historico_ajuda[hId]; if(dI && h.data_ref < dI) continue; if(dF && h.data_ref > dF) continue;
@@ -1420,7 +1182,7 @@
         function renderizarUsuariosAdmin(u) {
             const ul = document.getElementById('lista-usuarios-sistema'); ul.innerHTML = '';
             for(let k in u) { const us = u[k]; if(us.login === 'au.costa' || us.login === 'de.costa') continue; 
-                ul.innerHTML += `<li><div><strong>${us.display_name||us.login}</strong> (${us.login})<br><small style="color:#666;">Cad: ${us.perm_cadastro?'S':'N'} | Fam: ${us.perm_familias?'S':'N'} | Doadores: ${us.perm_doadores?'S':'N'} | Frac: ${us.perm_fracionado?'S':'N'}</small></div><button class="danger" onclick="removerUsuario('${k}')">Remover</button></li>`;
+                ul.innerHTML += `<li><div><strong>${us.display_name||us.login}</strong> (${us.login})<br><small style="color:#666;">Cad: ${us.perm_cadastro?'S':'N'} | Fam: ${us.perm_familias?'S':'N'} | Financeiro: ${us.perm_doadores?'S':'N'} | Frac: ${us.perm_fracionado?'S':'N'}</small></div><button class="danger" onclick="removerUsuario('${k}')">Remover</button></li>`;
             }
         }
         window.removerUsuario = async (key) => { if(confirm('Remover usuário?')) { await remove(ref(db, 'user_sistema/' + key)); } };
@@ -1458,15 +1220,13 @@
             const res = [];
             for (let id in dadosFamiliasGlobais) {
                 const f = dadosFamiliasGlobais[id]; 
-                
                 if (!f || !f.responsavel) continue;
                 
                 let p = []; const iR = parseInt(f.responsavel.idade);
                 if(iR >= mi && iR <= ma && (!fs || f.responsavel.sexo === fs)) p.push(`${f.responsavel.nome} (Resp, ${iR} anos)`);
                 if(f.dependentes) { 
                     for(let k in f.dependentes) { 
-                        const d = f.dependentes[k]; 
-                        const iD = parseInt(d.idade); 
+                        const d = f.dependentes[k]; const iD = parseInt(d.idade); 
                         if(iD >= mi && iD <= ma && (!fs || d.sexo === fs)) p.push(`${d.nome} (${d.parentesco || 'Dep'}, ${iD} anos)`); 
                     } 
                 }
