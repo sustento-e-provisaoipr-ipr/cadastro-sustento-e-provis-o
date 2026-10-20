@@ -751,6 +751,29 @@
         </div>
     </div>
 
+    <!-- MODAL: ALERTA PERSONALIZADO (substitui o alert() nativo feio) -->
+    <div id="modal-alerta" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 2rem;">
+            <div id="alerta-icone" style="font-size: 3rem; margin-bottom: 0.5rem;">ℹ️</div>
+            <h3 id="alerta-titulo" style="margin-bottom: 0.8rem; color: var(--primary);">Informação</h3>
+            <p id="alerta-mensagem" style="color: #4b5563; margin-bottom: 1.5rem; line-height: 1.5; white-space: pre-wrap;"></p>
+            <button id="alerta-ok-btn" style="width: auto; padding: 0.6rem 2.5rem;">OK</button>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMAÇÃO PERSONALIZADO (substitui o confirm() nativo) -->
+    <div id="modal-confirmacao" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">⚠️</div>
+            <h3 style="margin-bottom: 0.8rem; color: var(--warning);">Confirmação</h3>
+            <p id="confirmacao-mensagem" style="color: #4b5563; margin-bottom: 1.5rem; line-height: 1.5; white-space: pre-wrap;"></p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="confirmacao-cancelar" style="width: auto; padding: 0.6rem 1.5rem; background:#fff; border:1px solid var(--border); color: var(--text);">Cancelar</button>
+                <button id="confirmacao-ok" style="width: auto; padding: 0.6rem 1.5rem; background: var(--danger);">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAIS GERAIS DO SISTEMA -->
 
     <!-- MODAL: PERFIL DO USUÁRIO -->
@@ -866,6 +889,33 @@
         let watchIdGeo = null;
         let usuarioNoTemplo = false;
         let mostrarApenasFixas = false;
+
+        // ====== ALERTAS E CONFIRMAÇÕES PERSONALIZADOS (substitui alert/confirm nativos feios) ======
+        let confirmacaoCallbackPendente = null;
+        window.mostrarAlerta = (mensagem, tipo = 'info', titulo) => {
+            const icones = { sucesso: '✅', erro: '❌', aviso: '⚠️', info: 'ℹ️' };
+            const cores = { sucesso: 'var(--success)', erro: 'var(--danger)', aviso: 'var(--warning)', info: 'var(--primary)' };
+            const titulos = { sucesso: 'Sucesso!', erro: 'Ops!', aviso: 'Atenção', info: 'Informação' };
+            document.getElementById('alerta-icone').innerText = icones[tipo] || icones.info;
+            document.getElementById('alerta-titulo').innerText = titulo || (titulos[tipo] || titulos.info);
+            document.getElementById('alerta-titulo').style.color = cores[tipo] || cores.info;
+            document.getElementById('alerta-mensagem').innerText = mensagem;
+            document.getElementById('modal-alerta').style.display = 'flex';
+        };
+        // Sobrescreve o alert() nativo — todas as mensagens do sistema agora usam o modal profissional
+        window.alert = (msg) => {
+            const m = String(msg).toLowerCase();
+            let tipo = 'info';
+            if(m.includes('sucesso') || m.includes('realizado') || m.includes('salvo') || m.includes('cadastrad') || m.includes('registrad') || m.includes('geradas') || m.includes('atualizado') || m.includes('bem-vindo') || m.includes('copiado')) tipo = 'sucesso';
+            else if(m.includes('erro') || m.includes('incorret') || m.includes('não encontrado') || m.includes('nao encontrado') || m.includes('precisa') || m.includes('inválid') || m.includes('invalid') || m.includes('não consegui') || m.includes('nao consegui') || m.includes('digite') || m.includes('nenhum') || m.includes('telefone')) tipo = 'erro';
+            else if(m.includes('atenção') || m.includes('atencao') || m.includes('aviso') || m.includes('dica') || m.includes('lembre')) tipo = 'aviso';
+            window.mostrarAlerta(String(msg), tipo);
+        };
+        window.mostrarConfirmacao = (mensagem, callback) => {
+            confirmacaoCallbackPendente = callback;
+            document.getElementById('confirmacao-mensagem').innerText = mensagem;
+            document.getElementById('modal-confirmacao').style.display = 'flex';
+        };
         
         let chartTiposInstance = null;
         let chartFamiliasInstance = null;
@@ -1003,6 +1053,10 @@
         });
 
         window.fecharModal = (id) => document.getElementById(id).style.display = 'none';
+        // Listeners dos modais de alerta e confirmação personalizados
+        document.getElementById('alerta-ok-btn').addEventListener('click', () => fecharModal('modal-alerta'));
+        document.getElementById('confirmacao-cancelar').addEventListener('click', () => { confirmacaoCallbackPendente = null; fecharModal('modal-confirmacao'); });
+        document.getElementById('confirmacao-ok').addEventListener('click', () => { const cb = confirmacaoCallbackPendente; confirmacaoCallbackPendente = null; fecharModal('modal-confirmacao'); if(cb) cb(); });
 
         // ==========================================
         // CARREGAMENTO DE DADOS (REALTIME) E ESTOQUE
@@ -1253,7 +1307,7 @@
             const p = estoqueFracionado[id]; const nova = prompt(`Defina a quantidade EXATA (atual = ${p.qtd}) para o produto: ${p.nome}`, p.qtd);
             if(nova !== null && nova.trim() !== '') { await update(ref(db, `estoque_fracionado/produtos/${id}`), { qtd: parseFloat(nova) }); }
         };
-        window.removerFrac = async (id) => { if(confirm('Remover produto do estoque fracionado?')) { await remove(ref(db, `estoque_fracionado/produtos/${id}`)); } };
+        window.removerFrac = (id) => { mostrarConfirmacao('Remover este produto do estoque fracionado?', async () => { await remove(ref(db, `estoque_fracionado/produtos/${id}`)); }); };
 
         function preencherSelectModeloCesta() {
             const sel = document.getElementById('modelo-produto'); sel.innerHTML = '';
@@ -1279,7 +1333,7 @@
             if(chaves.length === 0) { tb.innerHTML = '<tr><td colspan="3" align="center" style="padding:1rem;">Nenhum item na receita da cesta.</td></tr>'; return; }
             chaves.forEach(id => { const p = modeloCesta[id]; tb.innerHTML += `<tr><td style="font-weight:bold; color:var(--primary);">${p.nome}</td><td>${p.qtd} unidade(s) por Cesta</td><td><button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="removerItemModelo('${id}')">Remover</button></td></tr>`; });
         }
-        window.removerItemModelo = async (id) => { if(confirm('Remover este item da Cesta Básica?')) { await remove(ref(db, `estoque_fracionado/modelo/${id}`)); } };
+        window.removerItemModelo = (id) => { mostrarConfirmacao('Remover este item da Cesta Básica?', async () => { await remove(ref(db, `estoque_fracionado/modelo/${id}`)); }); };
 
         document.getElementById('btn-simular-gerar').addEventListener('click', () => {
             const qtdCestas = parseInt(document.getElementById('gerar-qtd-cestas').value) || 0; const logDiv = document.getElementById('gerar-log');
@@ -1449,7 +1503,7 @@
             document.getElementById('modal-lista').style.display = 'flex';
         }
 
-        window.removerDoacaoFixa = async (id, tipo) => { if(confirm(`Cancelar a doação fixa de ${tipo}?`)) { await remove(ref(db, `cadastro/${id}/ajudas_fixas/${tipo}`)); } };
+        window.removerDoacaoFixa = (id, tipo) => { mostrarConfirmacao(`Cancelar a doação fixa de ${tipo}?`, async () => { await remove(ref(db, `cadastro/${id}/ajudas_fixas/${tipo}`)); }); };
 
         function atualizarHistoricoDOM(idFam) {
             const f = dadosFamiliasGlobais[idFam]; const h = f?.historico_ajuda; const hD = document.getElementById('historico-lista'); hD.innerHTML = ''; 
@@ -1553,7 +1607,7 @@
                 ul.innerHTML += `<li><div><strong>${us.display_name||us.login}</strong> (${us.login})<br><small style="color:#666;">Cad: ${us.perm_cadastro?'S':'N'} | Fam: ${us.perm_familias?'S':'N'} | Financeiro: ${us.perm_doadores?'S':'N'} | Frac: ${us.perm_fracionado?'S':'N'}</small></div><button class="danger" onclick="removerUsuario('${k}')">Remover</button></li>`;
             }
         }
-        window.removerUsuario = async (key) => { if(confirm('Remover usuário?')) { await remove(ref(db, 'user_sistema/' + key)); } };
+        window.removerUsuario = (key) => { mostrarConfirmacao('Remover este usuário do sistema?', async () => { await remove(ref(db, 'user_sistema/' + key)); }); };
         
         document.querySelectorAll('#main-nav .nav-btn').forEach(btn => {
             if(btn.id === 'btn-novo-prefiltro' || btn.id === 'btn-novo-tipo-ajuda' || btn.id === 'btn-menu-users') return;
@@ -1754,8 +1808,8 @@
                 const refNova = await push(ref(db, 'cadastro'), nf);
                 usuarioFamiliaLogado = refNova.key;
                 localStorage.setItem('usuarioFamiliaId', refNova.key);
-                alert('Cadastro realizado com sucesso! Bem-vindo(a).');
-                entrarTelaUsuario();
+                window.mostrarAlerta('Cadastro realizado com sucesso! Bem-vindo(a).', 'sucesso');
+                setTimeout(() => { fecharModal('modal-alerta'); entrarTelaUsuario(); }, 1800);
             } catch(err) {
                 alert('Erro ao salvar: ' + err.message);
             } finally {
@@ -1772,9 +1826,10 @@
             const fam = dadosFamiliasGlobais[usuarioFamiliaLogado];
             if(fam && fam.responsavel) {
                 document.getElementById('user-screen-nome').innerText = 'Olá, ' + fam.responsavel.nome.split(' ')[0] + '!';
-                document.getElementById('user-screen-sub').innerText = 'Igreja Presbiteriana de Alta Floresta — Sustento & Provisão';
+                document.getElementById('user-screen-sub').innerText = 'Igreja Presbiteriana de Lucas do Rio Verde';
             }
             iniciarMonitoramentoGeo();
+            agendarAtualizacaoMeiaNoite();
             renderizarTelaUsuario();
             renderizarPresencasUsuario();
             window.scrollTo(0,0);
@@ -1786,31 +1841,34 @@
             location.reload();
         };
 
-        // Calcula as datas da semana atual (domingo a sábado)
-        function datasDaSemanaAtual() {
+        // Calcula a PRÓXIMA data (ou hoje) em que cai um determinado dia da semana
+        function proximaDataDoDia(diaSemana) {
             const hoje = new Date(); hoje.setHours(0,0,0,0);
-            const diaSemana = hoje.getDay(); // 0=dom
-            const inicio = new Date(hoje); inicio.setDate(hoje.getDate() - diaSemana);
-            const datas = [];
-            for(let i=0;i<7;i++) { const d = new Date(inicio); d.setDate(inicio.getDate()+i); datas.push(d); }
-            return datas;
+            const diff = (diaSemana - hoje.getDay() + 7) % 7;
+            const d = new Date(hoje); d.setDate(hoje.getDate() + diff);
+            return { data: d, diasAte: diff };
+        }
+        // Agenda re-renderização automática à meia-noite (00:00) para atualizar as datas
+        function agendarAtualizacaoMeiaNoite() {
+            const agora = new Date();
+            const meiaNoite = new Date(agora); meiaNoite.setHours(24, 0, 5, 0);
+            const msAteMeiaNoite = meiaNoite - agora;
+            setTimeout(() => { if(usuarioFamiliaLogado) { renderizarTelaUsuario(); renderizarPresencasUsuario(); } agendarAtualizacaoMeiaNoite(); }, msAteMeiaNoite);
         }
 
         function renderizarTelaUsuario() {
             if(!usuarioFamiliaLogado) return;
-            const datas = datasDaSemanaAtual();
-            const hoje = new Date(); hoje.setHours(0,0,0,0);
-            const hojeDia = hoje.getDay();
+            const hojeDia = new Date().getDay();
 
-            // Cultos da semana
+            // Cultos da semana — ordenados de SEGUNDA (1) a DOMINGO (0), só os que existem
             let htmlSemana = '';
             let cultoHoje = null;
-            const cultosOrdenados = Object.values(programacaoCultos).sort((a,b) => parseInt(a.dia_semana) - parseInt(b.dia_semana));
+            const cultosOrdenados = Object.values(programacaoCultos).sort((a,b) => ((parseInt(a.dia_semana)+6)%7) - ((parseInt(b.dia_semana)+6)%7));
             cultosOrdenados.forEach(c => {
                 const dia = parseInt(c.dia_semana);
-                const dataCulto = datas[dia];
+                const { data: dataCulto, diasAte } = proximaDataDoDia(dia);
                 const dataStr = dataCulto.toISOString().split('T')[0];
-                const isHoje = dia === hojeDia;
+                const isHoje = diasAte === 0;
                 if(isHoje) cultoHoje = { ...c, data: dataCulto, dataStr };
                 const dataFormatada = dataCulto.getDate().toString().padStart(2,'0') + '/' + (dataCulto.getMonth()+1).toString().padStart(2,'0');
                 htmlSemana += `<div class="culto-semana-item ${isHoje?'hoje':''}">
@@ -1985,7 +2043,7 @@
         function atualizarTabelaCultosAdmin() {
             const tb = document.getElementById('tabela-cultos-prog');
             if(!tb) return;
-            const cultos = Object.entries(programacaoCultos).sort((a,b) => parseInt(a[1].dia_semana) - parseInt(b[1].dia_semana));
+            const cultos = Object.entries(programacaoCultos).sort((a,b) => ((parseInt(a[1].dia_semana)+6)%7) - ((parseInt(b[1].dia_semana)+6)%7));
             if(cultos.length === 0) { tb.innerHTML = '<tr><td colspan="5" align="center" style="padding:1rem;">Nenhum culto cadastrado.</td></tr>'; return; }
             tb.innerHTML = cultos.map(([id,c]) => `<tr>
                 <td><strong>${DIAS_SEMANA[parseInt(c.dia_semana)]}</strong></td>
@@ -1996,7 +2054,7 @@
                 </td>
             </tr>`).join('');
         }
-        window.removerCulto = async (id) => { if(confirm('Remover este culto da programação?')) { await remove(ref(db, 'configuracoes/programacao_cultos/' + id)); if(cultoEditandoId === id) resetarFormCulto(); } };
+        window.removerCulto = (id) => { mostrarConfirmacao('Remover este culto da programação?', async () => { await remove(ref(db, 'configuracoes/programacao_cultos/' + id)); if(cultoEditandoId === id) resetarFormCulto(); }); };
 
         // Localização do templo
         document.getElementById('btn-capturar-local').addEventListener('click', () => {
