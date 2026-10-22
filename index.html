@@ -1748,6 +1748,8 @@
             if(encontrado) {
                 usuarioFamiliaLogado = encontrado;
                 localStorage.setItem('usuarioFamiliaId', encontrado);
+                const famEncontrada = dadosFamiliasGlobais[encontrado];
+                if(famEncontrada && famEncontrada.responsavel) localStorage.setItem('usuarioNome', famEncontrada.responsavel.nome);
                 entrarTelaUsuario();
             } else {
                 alert('Telefone não encontrado. Verifique se digitou corretamente, ou faça um novo cadastro.');
@@ -1847,9 +1849,19 @@
                         condicoes: item.querySelector('.wdep-cond').value.trim()
                     };
                 });
+                // Verifica duplicidade: telefone já cadastrado (evita cadastro duplicado)
+                const telWiz = (document.getElementById('w-telefone').value || '').trim().replace(/\D/g, '');
+                if(telWiz) {
+                    const duplicado = Object.values(dadosFamiliasGlobais).find(f => f && f.responsavel && (f.responsavel.telefone || '').replace(/\D/g, '') === telWiz);
+                    if(duplicado) {
+                        window.mostrarAlerta('Este número de telefone já pertence a um cadastro no sistema. Se você já tem cadastro, volte e use "Já tenho cadastro — entrar".', 'erro');
+                        return;
+                    }
+                }
                 const refNova = await push(ref(db, 'cadastro'), nf);
                 usuarioFamiliaLogado = refNova.key;
                 localStorage.setItem('usuarioFamiliaId', refNova.key);
+                localStorage.setItem('usuarioNome', nf.responsavel.nome);
                 window.mostrarAlerta('Cadastro realizado com sucesso! Bem-vindo(a).', 'sucesso');
                 setTimeout(() => { fecharModal('modal-alerta'); entrarTelaUsuario(); }, 1800);
             } catch(err) {
@@ -1868,8 +1880,12 @@
             const fam = dadosFamiliasGlobais[usuarioFamiliaLogado];
             if(fam && fam.responsavel) {
                 document.getElementById('user-screen-nome').innerText = 'Olá, ' + fam.responsavel.nome.split(' ')[0] + '!';
-                document.getElementById('user-screen-sub').innerText = 'Igreja Presbiteriana de Alta Floresta — Sustento & Provisão';
+                localStorage.setItem('usuarioNome', fam.responsavel.nome);
+            } else {
+                const nomeSalvo = localStorage.getItem('usuarioNome');
+                if(nomeSalvo) document.getElementById('user-screen-nome').innerText = 'Olá, ' + nomeSalvo.split(' ')[0] + '!';
             }
+            document.getElementById('user-screen-sub').innerText = 'Igreja Presbiteriana de Alta Floresta — Sustento & Provisão';
             iniciarMonitoramentoGeo();
             agendarAtualizacaoMeiaNoite();
             renderizarTelaUsuario();
@@ -1879,6 +1895,7 @@
         window.userSair = () => {
             localStorage.removeItem('usuarioFamiliaId');
             usuarioFamiliaLogado = null;
+            localStorage.removeItem('usuarioNome');
             pararMonitoramentoGeo();
             location.reload();
         };
@@ -1900,6 +1917,12 @@
 
         function renderizarTelaUsuario() {
             if(!usuarioFamiliaLogado) return;
+            // Garante que o nome no cabeçalho esteja sempre correto (mesmo após recarregar a página)
+            const famLogada = dadosFamiliasGlobais[usuarioFamiliaLogado];
+            if(famLogada && famLogada.responsavel) {
+                document.getElementById('user-screen-nome').innerText = 'Olá, ' + famLogada.responsavel.nome.split(' ')[0] + '!';
+                localStorage.setItem('usuarioNome', famLogada.responsavel.nome);
+            }
             const hojeDia = new Date().getDay();
 
             // Cultos da semana — ordenados de SEGUNDA (1) a DOMINGO (0), só os que existem
@@ -2023,17 +2046,21 @@
             if(jaFez) { alert('Você já fez check-in hoje!'); return; }
             const btn = document.getElementById('btn-fazer-checkin');
             btn.disabled = true; btn.innerText = 'Registrando...';
-            await push(ref(db, 'checkins'), {
+            const horarioEntrada = hoje.toTimeString().split(' ')[0].substring(0,5);
+            const novaRef = await push(ref(db, 'checkins'), {
                 familia_id: usuarioFamiliaLogado,
                 data: dataStr,
                 culto: cultoNome,
-                horario: hoje.toTimeString().split(' ')[0].substring(0,5),
+                horario: horarioEntrada,
                 horario_saida: null,
                 timestamp: hoje.toISOString()
             });
-            document.getElementById('checkin-ok-texto').innerText = `${cultoNome} — entrada às ${hoje.toTimeString().split(' ')[0].substring(0,5)}. Ao final do culto, registre sua saída (check-out)!`;
+            // Atualiza localmente para o botão de checkout aparecer IMEDIATAMENTE (sem esperar o Firebase)
+            checkinsGlobais[novaRef.key] = { familia_id: usuarioFamiliaLogado, data: dataStr, culto: cultoNome, horario: horarioEntrada, horario_saida: null, timestamp: hoje.toISOString() };
+            document.getElementById('checkin-ok-texto').innerText = `${cultoNome} — entrada às ${horarioEntrada}. Ao final do culto, registre sua saída (check-out)!`;
             document.getElementById('modal-checkin-ok').style.display = 'flex';
-            atualizarBotoesPresenca();
+            renderizarTelaUsuario();
+            renderizarPresencasUsuario();
         }
 
         async function fazerCheckout() {
@@ -2047,9 +2074,11 @@
             const btn = document.getElementById('btn-fazer-checkout');
             btn.disabled = true; btn.innerText = 'Registrando saída...';
             await update(ref(db, 'checkins/' + checkinId), { horario_saida: horarioSaida });
+            if(checkinsGlobais[checkinId]) checkinsGlobais[checkinId].horario_saida = horarioSaida;
             document.getElementById('checkin-ok-texto').innerText = `Saída registrada às ${horarioSaida}. Obrigado por participar! 🙏`;
             document.getElementById('modal-checkin-ok').style.display = 'flex';
-            atualizarBotoesPresenca();
+            renderizarTelaUsuario();
+            renderizarPresencasUsuario();
         }
 
         function renderizarPresencasUsuario() {
