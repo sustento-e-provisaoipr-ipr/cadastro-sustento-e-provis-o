@@ -265,9 +265,11 @@
                     </div>
                 </div>
                 <div class="filtro-fixas-bar">
-                    <label><input type="checkbox" id="filtro-apenas-fixas"> 🎯 Mostrar apenas famílias com Ajuda Fixa</label>
+                    <label><input type="checkbox" id="filtro-apenas-pendentes" style="accent-color: var(--warning);"> ⏳ Apenas cadastros novos (pendentes de aprovação)</label>
+                    <span class="contador-fixas" id="contador-pendentes" style="background: var(--warning);">0 pendentes</span>
+                    <label><input type="checkbox" id="filtro-apenas-fixas"> 🎯 Apenas com Ajuda Fixa</label>
                     <span class="contador-fixas" id="contador-fixas">0 fixas</span>
-                    <span style="font-size: 0.85rem; color: #1e40af;">Total de famílias: <strong id="contador-total-familias">0</strong></span>
+                    <span style="font-size: 0.85rem; color: #1e40af;">Total: <strong id="contador-total-familias">0</strong></span>
                 </div>
                 <div class="bairros-grid" id="bairros-container"></div>
             </div>
@@ -889,6 +891,8 @@
         let watchIdGeo = null;
         let usuarioNoTemplo = false;
         let mostrarApenasFixas = false;
+        let mostrarApenasPendentes = false;
+        function ehCadastroPendente(fam) { return fam && fam.status === 'pendente'; }
 
         // ====== ALERTAS E CONFIRMAÇÕES PERSONALIZADOS (substitui alert/confirm nativos feios) ======
         let confirmacaoCallbackPendente = null;
@@ -937,7 +941,7 @@
             }
             // Carrega dados públicos (cultos, localização) mesmo sem login
             onValue(ref(db, 'configuracoes/programacao_cultos'), (s) => { programacaoCultos = s.val() || {}; if(usuarioFamiliaLogado) renderizarTelaUsuario(); });
-            onValue(ref(db, 'configuracoes/localizacao_templo'), (s) => { localizacaoTemplo = s.val() || null; if(usuarioFamiliaLogado) atualizarBotaoCheckin(); });
+            onValue(ref(db, 'configuracoes/localizacao_templo'), (s) => { localizacaoTemplo = s.val() || null; if(usuarioFamiliaLogado) atualizarBotoesPresenca(); });
             onValue(ref(db, 'checkins'), (s) => { checkinsGlobais = s.val() || {}; if(usuarioFamiliaLogado) renderizarPresencasUsuario(); });
             onValue(ref(db, 'cadastro'), (s) => { dadosFamiliasGlobais = s.val() || {}; if(usuarioFamiliaLogado) renderizarTelaUsuario(); });
 
@@ -1440,27 +1444,37 @@
             const bAg = {}; 
             let totalFamilias = 0;
             let totalFixas = 0;
+            let totalPendentes = 0;
             for (let id in dadosFamiliasGlobais) { 
                 const fam = dadosFamiliasGlobais[id]; 
                 if (!fam || !fam.responsavel || !fam.responsavel.bairro) continue; 
                 totalFamilias++;
                 const temFixa = fam.ajudas_fixas && Object.keys(fam.ajudas_fixas).length > 0;
+                const pendente = ehCadastroPendente(fam);
                 if(temFixa) totalFixas++;
+                if(pendente) totalPendentes++;
                 if(mostrarApenasFixas && !temFixa) continue;
+                if(mostrarApenasPendentes && !pendente) continue;
                 if(!bAg[fam.responsavel.bairro]) bAg[fam.responsavel.bairro] = []; 
                 bAg[fam.responsavel.bairro].push({ id, ...fam }); 
             }
             document.getElementById('contador-total-familias').innerText = totalFamilias;
             document.getElementById('contador-fixas').innerText = totalFixas + ' fixas';
+            const cp = document.getElementById('contador-pendentes');
+            cp.innerText = totalPendentes + ' pendente(s)';
+            cp.style.background = totalPendentes > 0 ? 'var(--warning)' : '#9ca3af';
             const c = document.getElementById('bairros-container'); c.innerHTML = '';
             if(Object.keys(bAg).length === 0) {
-                c.innerHTML = '<p style="text-align:center; color:#6b7280; padding:2rem;">' + (mostrarApenasFixas ? 'Nenhuma família com ajuda fixa encontrada.' : 'Nenhuma família cadastrada ainda.') + '</p>';
+                let msg = 'Nenhuma família cadastrada ainda.';
+                if(mostrarApenasPendentes) msg = 'Nenhum cadastro pendente de aprovação.';
+                else if(mostrarApenasFixas) msg = 'Nenhuma família com ajuda fixa encontrada.';
+                c.innerHTML = `<p style="text-align:center; color:#6b7280; padding:2rem;">${msg}</p>`;
                 return;
             }
             for (let b in bAg) { const div = document.createElement('div'); div.className = 'bairro-card'; div.innerHTML = `<h3>${b}</h3><span>${bAg[b].length} Família(s)</span>`; div.addEventListener('click', () => abrirModalLista(b, bAg[b])); c.appendChild(div); }
         }
-        // Filtro de ajuda fixa
         document.getElementById('filtro-apenas-fixas').addEventListener('change', (e) => { mostrarApenasFixas = e.target.checked; renderizarFamilias(); });
+        document.getElementById('filtro-apenas-pendentes').addEventListener('change', (e) => { mostrarApenasPendentes = e.target.checked; renderizarFamilias(); });
 
         function configurarBuscaRapida() {
             const buscaInput = document.getElementById('busca-familia-input'); const buscaResultados = document.getElementById('busca-familia-resultados');
@@ -1493,17 +1507,44 @@
             }
             const respCond = f.responsavel.condicoes ? `<div style="color: #92400e; font-weight: bold; background: #fde68a; padding: 8px; border-radius: 4px; font-size: 0.9em; margin-top: 10px; display: inline-block;">⚠️ Necessidade Especial: ${f.responsavel.condicoes}</div>` : '';
             const btnEditar = currentUser.perm_cadastro ? `<button onclick="carregarFamiliaParaEdicao('${id}')" class="nav-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px; border-color:var(--warning); color:var(--warning);">✏️ Editar</button>` : '';
+            let avisoPendente = '';
+            if(ehCadastroPendente(f)) {
+                avisoPendente = `<div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid var(--warning); border-radius:6px; padding:0.8rem; margin:0.8rem 0;">
+                    <strong style="color:#92400e;">⏳ Cadastro PENDENTE de aprovação (feito pelo link público).</strong><br>
+                    <small style="color:#78350f;">Valide os dados antes de iniciar o atendimento. Após aprovar, o selo de pendente é removido.</small>
+                    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" onclick="aprovarCadastro('${id}')" style="width:auto; padding:0.4rem 1rem; background:var(--success); font-size:0.85rem;">✅ Aprovar Cadastro</button>
+                        <button type="button" onclick="recusarCadastro('${id}')" style="width:auto; padding:0.4rem 1rem; background:var(--danger); font-size:0.85rem;">❌ Recusar e excluir</button>
+                    </div>
+                </div>`;
+            }
+            const seloPendenteHeader = ehCadastroPendente(f) ? '<span style="background:var(--warning); color:#fff; padding:2px 10px; border-radius:12px; font-size:0.75rem; vertical-align:middle; margin-left:6px;">⏳ PENDENTE</span>' : '';
 
-            document.getElementById('detalhes-familia-header').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h2 style="color: var(--primary); margin-bottom: 0.5rem;">${f.responsavel.nome}</h2>${btnEditar}</div><p><strong>Idade:</strong> ${formatarIdade(f.responsavel.idade)} | <strong>Sexo:</strong> ${f.responsavel.sexo}</p><p><strong>Endereço:</strong> ${f.responsavel.endereco}, ${f.responsavel.bairro} | <strong>Tel:</strong> ${f.responsavel.telefone}</p>${respCond}${dH ? `<div style="margin-top: 1rem; background: #f9fafb; padding: 1rem; border-radius: 4px;">${dH}</div>` : ''}`;
+            document.getElementById('detalhes-familia-header').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><h2 style="color: var(--primary); margin-bottom: 0.5rem;">${f.responsavel.nome}${seloPendenteHeader}</h2>${btnEditar}</div>${avisoPendente}<p><strong>Idade:</strong> ${formatarIdade(f.responsavel.idade)} | <strong>Sexo:</strong> ${f.responsavel.sexo}</p><p><strong>Endereço:</strong> ${f.responsavel.endereco}, ${f.responsavel.bairro} | <strong>Tel:</strong> ${f.responsavel.telefone}</p>${respCond}${dH ? `<div style="margin-top: 1rem; background: #f9fafb; padding: 1rem; border-radius: 4px;">${dH}</div>` : ''}`;
             atualizarHistoricoDOM(id); document.getElementById('modal-familia').style.display = 'flex';
         }
         function abrirModalLista(b, fs) {
             document.getElementById('modal-lista-titulo').innerText = `Famílias - ${b}`; const ul = document.getElementById('modal-lista-ul'); ul.innerHTML = '';
-            fs.forEach(f => { const li = document.createElement('li'); li.innerHTML = `<strong>${f.responsavel.nome}</strong> <span>Tel: ${f.responsavel.telefone}</span>`; li.addEventListener('click', () => abrirModalFamilia(f.id)); ul.appendChild(li); });
+            fs.forEach(f => { 
+                const pendente = ehCadastroPendente(f) ? ' <span style="background:var(--warning); color:#fff; padding:1px 8px; border-radius:10px; font-size:0.75rem; font-weight:bold;">⏳ PENDENTE</span>' : '';
+                const li = document.createElement('li'); li.innerHTML = `<strong>${f.responsavel.nome}</strong>${pendente} <span>Tel: ${f.responsavel.telefone}</span>`; li.addEventListener('click', () => abrirModalFamilia(f.id)); ul.appendChild(li); 
+            });
             document.getElementById('modal-lista').style.display = 'flex';
         }
 
         window.removerDoacaoFixa = (id, tipo) => { mostrarConfirmacao(`Cancelar a doação fixa de ${tipo}?`, async () => { await remove(ref(db, `cadastro/${id}/ajudas_fixas/${tipo}`)); }); };
+        // Triagem de cadastros pelo link público
+        window.aprovarCadastro = async (id) => {
+            await update(ref(db, 'cadastro/' + id), { status: 'aprovado' });
+            window.mostrarAlerta('Cadastro aprovado com sucesso! A família já pode ser atendida normalmente.', 'sucesso');
+        };
+        window.recusarCadastro = (id) => {
+            mostrarConfirmacao('Recusar e EXCLUIR este cadastro? Esta ação não pode ser desfeita.', async () => {
+                await remove(ref(db, 'cadastro/' + id));
+                fecharModal('modal-familia');
+                window.mostrarAlerta('Cadastro recusado e removido do sistema.', 'info');
+            });
+        };
 
         function atualizarHistoricoDOM(idFam) {
             const f = dadosFamiliasGlobais[idFam]; const h = f?.historico_ajuda; const hD = document.getElementById('historico-lista'); hD.innerHTML = ''; 
@@ -1778,6 +1819,7 @@
             try {
                 const idade = document.getElementById('w-idade').value;
                 const nf = {
+                    status: 'pendente',
                     responsavel: {
                         nome: document.getElementById('w-nome').value.trim().toUpperCase(),
                         idade: idade,
@@ -1826,7 +1868,7 @@
             const fam = dadosFamiliasGlobais[usuarioFamiliaLogado];
             if(fam && fam.responsavel) {
                 document.getElementById('user-screen-nome').innerText = 'Olá, ' + fam.responsavel.nome.split(' ')[0] + '!';
-                document.getElementById('user-screen-sub').innerText = 'Igreja Presbiteriana de Lucas do Rio Verde';
+                document.getElementById('user-screen-sub').innerText = 'Igreja Presbiteriana de Alta Floresta — Sustento & Provisão';
             }
             iniciarMonitoramentoGeo();
             agendarAtualizacaoMeiaNoite();
@@ -1882,13 +1924,25 @@
 
             // Área de culto de hoje + check-in
             let htmlHoje = '';
+            const hojeStr = new Date().toISOString().split('T')[0];
+            const checkinHoje = Object.values(checkinsGlobais).find(c => c.familia_id === usuarioFamiliaLogado && c.data === hojeStr);
             if(cultoHoje) {
+                let conteudoBotao = '';
+                if(!checkinHoje) {
+                    conteudoBotao = `<button class="checkin-btn" id="btn-fazer-checkin" disabled>📱 Verificando localização...</button>
+                        <div class="loc-status wait" id="loc-status-usuario">⏳ Aguardando permissão de localização...</div>`;
+                } else if(!checkinHoje.horario_saida) {
+                    conteudoBotao = `<div style="background:rgba(255,255,255,0.15); padding:0.6rem; border-radius:6px; margin-top:0.8rem; font-size:0.9rem;">✅ Entrada registrada às <strong>${checkinHoje.horario}</strong> — agora registre sua saída!</div>
+                        <button class="checkin-btn" id="btn-fazer-checkout" disabled>🏁 Verificando localização...</button>
+                        <div class="loc-status wait" id="loc-status-usuario">⏳ Aguardando permissão de localização...</div>`;
+                } else {
+                    conteudoBotao = `<div style="background:rgba(16,185,129,0.25); padding:0.8rem; border-radius:6px; margin-top:0.8rem; font-size:0.95rem;">✅ Presença completa hoje!<br>Entrada: <strong>${checkinHoje.horario}</strong> | Saída: <strong>${checkinHoje.horario_saida}</strong></div>`;
+                }
                 htmlHoje = `<div class="culto-hoje-card">
                     <div style="font-size:0.85rem; opacity:0.8; text-transform:uppercase; letter-spacing:1px;">Hoje tem culto!</div>
                     <h3>${cultoHoje.nome}</h3>
                     <p>${cultoHoje.horario}${cultoHoje.detalhe?` — ${cultoHoje.detalhe}`:''}</p>
-                    <button class="checkin-btn" id="btn-fazer-checkin" disabled>📱 Verificando localização...</button>
-                    <div class="loc-status wait" id="loc-status-usuario">⏳ Aguardando permissão de localização...</div>
+                    ${conteudoBotao}
                 </div>`;
             } else {
                 htmlHoje = `<div style="background:#f9fafb; border-radius:12px; padding:1.2rem; text-align:center; color:#6b7280; border:1px dashed #d1d5db;">
@@ -1897,8 +1951,12 @@
             }
             document.getElementById('user-culto-hoje-area').innerHTML = htmlHoje;
             if(cultoHoje) {
-                document.getElementById('btn-fazer-checkin').addEventListener('click', fazerCheckin);
-                atualizarBotaoCheckin();
+                if(!checkinHoje) {
+                    document.getElementById('btn-fazer-checkin').addEventListener('click', fazerCheckin);
+                } else if(!checkinHoje.horario_saida) {
+                    document.getElementById('btn-fazer-checkout').addEventListener('click', fazerCheckout);
+                }
+                atualizarBotoesPresenca();
             }
         }
 
@@ -1915,36 +1973,40 @@
             pararMonitoramentoGeo();
             watchIdGeo = navigator.geolocation.watchPosition(
                 (pos) => {
-                    if(!localizacaoTemplo) { usuarioNoTemplo = false; atualizarBotaoCheckin(); return; }
+                    if(!localizacaoTemplo) { usuarioNoTemplo = false; atualizarBotoesPresenca(); return; }
                     const dist = calcularDistanciaMetros(pos.coords.latitude, pos.coords.longitude, parseFloat(localizacaoTemplo.lat), parseFloat(localizacaoTemplo.lng));
                     usuarioNoTemplo = dist <= (parseFloat(localizacaoTemplo.raio_metros) || 150);
                     window._ultimaDistancia = Math.round(dist);
-                    atualizarBotaoCheckin();
+                    atualizarBotoesPresenca();
                 },
-                (err) => { usuarioNoTemplo = false; atualizarBotaoCheckin(); },
+                (err) => { usuarioNoTemplo = false; atualizarBotoesPresenca(); },
                 { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
             );
         }
         function pararMonitoramentoGeo() { if(watchIdGeo) { navigator.geolocation.clearWatch(watchIdGeo); watchIdGeo = null; } }
 
-        function atualizarBotaoCheckin() {
-            const btn = document.getElementById('btn-fazer-checkin');
+        function atualizarBotoesPresenca() {
+            const btnCheckin = document.getElementById('btn-fazer-checkin');
+            const btnCheckout = document.getElementById('btn-fazer-checkout');
             const status = document.getElementById('loc-status-usuario');
-            if(!btn || !status) return;
+            if(!status) return;
+            const btn = btnCheckin || btnCheckout;
+            if(!btn) return;
+            const ehCheckout = !!btnCheckout;
             if(!localizacaoTemplo) {
                 btn.disabled = true; btn.innerText = '⏳ Aguardando configuração...';
                 status.className = 'loc-status wait'; status.innerText = 'A igreja ainda não configurou a localização.';
                 return;
             }
             if(usuarioNoTemplo) {
-                btn.disabled = false; btn.innerText = '✅ Fazer Check-in agora';
+                btn.disabled = false; btn.innerText = ehCheckout ? '🏁 Registrar Saída (Check-out)' : '✅ Fazer Check-in agora';
                 status.className = 'loc-status ok'; status.innerText = `📍 Você está no templo (${window._ultimaDistancia||0}m do ponto)`;
             } else {
-                btn.disabled = true; btn.innerText = '🔒 Check-in bloqueado';
+                btn.disabled = true; btn.innerText = ehCheckout ? '🔒 Saída bloqueada' : '🔒 Check-in bloqueado';
                 status.className = 'loc-status off';
                 status.innerText = window._ultimaDistancia !== undefined
                     ? `📍 Você está a ${window._ultimaDistancia}m do templo. Chegue mais perto!`
-                    : '📍 Ative a localização e esteja no templo para fazer check-in.';
+                    : '📍 Ative a localização e esteja no templo.';
             }
         }
 
@@ -1966,11 +2028,28 @@
                 data: dataStr,
                 culto: cultoNome,
                 horario: hoje.toTimeString().split(' ')[0].substring(0,5),
+                horario_saida: null,
                 timestamp: hoje.toISOString()
             });
-            document.getElementById('checkin-ok-texto').innerText = `${cultoNome} — ${hoje.getDate().toString().padStart(2,'0')}/${(hoje.getMonth()+1).toString().padStart(2,'0')} às ${hoje.toTimeString().split(' ')[0].substring(0,5)}`;
+            document.getElementById('checkin-ok-texto').innerText = `${cultoNome} — entrada às ${hoje.toTimeString().split(' ')[0].substring(0,5)}. Ao final do culto, registre sua saída (check-out)!`;
             document.getElementById('modal-checkin-ok').style.display = 'flex';
-            atualizarBotaoCheckin();
+            atualizarBotoesPresenca();
+        }
+
+        async function fazerCheckout() {
+            if(!usuarioNoTemplo || !usuarioFamiliaLogado) { window.mostrarAlerta('Você precisa estar no templo para registrar a saída.', 'erro'); return; }
+            const hoje = new Date();
+            const dataStr = hoje.toISOString().split('T')[0];
+            const checkinHoje = Object.entries(checkinsGlobais).find(([k,c]) => c.familia_id === usuarioFamiliaLogado && c.data === dataStr && !c.horario_saida);
+            if(!checkinHoje) { window.mostrarAlerta('Nenhum check-in de hoje encontrado para registrar saída.', 'erro'); return; }
+            const [checkinId] = checkinHoje;
+            const horarioSaida = hoje.toTimeString().split(' ')[0].substring(0,5);
+            const btn = document.getElementById('btn-fazer-checkout');
+            btn.disabled = true; btn.innerText = 'Registrando saída...';
+            await update(ref(db, 'checkins/' + checkinId), { horario_saida: horarioSaida });
+            document.getElementById('checkin-ok-texto').innerText = `Saída registrada às ${horarioSaida}. Obrigado por participar! 🙏`;
+            document.getElementById('modal-checkin-ok').style.display = 'flex';
+            atualizarBotoesPresenca();
         }
 
         function renderizarPresencasUsuario() {
@@ -1982,7 +2061,8 @@
             document.getElementById('user-presencas-mes').innerText = noMes;
             let html = '';
             meusCheckins.slice(0,10).forEach(c => {
-                html += `<div class="checkin-historico-item"><strong>${c.culto}</strong> — ${formatarDataBR(c.data)} às ${c.horario}</div>`;
+                const saida = c.horario_saida ? ` → saída ${c.horario_saida} ✅` : ` <span style="color:#92400e; font-weight:bold;">(saída não registrada ⚠️)</span>`;
+                html += `<div class="checkin-historico-item"><strong>${c.culto}</strong> — ${formatarDataBR(c.data)} | entrada ${c.horario}${saida}</div>`;
             });
             document.getElementById('user-historico-presencas').innerHTML = html || '<p style="color:#6b7280; font-size:0.9rem;">Nenhuma presença registrada ainda. Venha ao culto e faça check-in!</p>';
         }
@@ -2173,12 +2253,13 @@
                 const nome = fam && fam.responsavel ? fam.responsavel.nome : '(família não encontrada)';
                 const bairro = fam && fam.responsavel ? fam.responsavel.bairro : '-';
                 const ultima = lista.sort((a,b) => (b.data||'').localeCompare(a.data||''))[0];
-                const hist = lista.sort((a,b) => (b.data||'').localeCompare(a.data||'')).map(c => `${formatarDataBR(c.data)} (${c.culto})`).join(', ');
+                const fmtEntSaida = (c) => `${formatarDataBR(c.data)} ${c.horario}${c.horario_saida?`→${c.horario_saida}`:' ⚠️sem saída'}`;
+                const hist = lista.sort((a,b) => (b.data||'').localeCompare(a.data||'')).slice(0,3).map(fmtEntSaida).join(', ');
                 return `<tr>
                     <td style="font-weight:bold; color:var(--primary); cursor:pointer;" onclick="abrirModalFamilia('${fid}')">${nome}</td>
                     <td>${bairro}</td>
                     <td><strong style="color:var(--success);">${lista.length}</strong> vez(es)</td>
-                    <td>${formatarDataBR(ultima.data)} às ${ultima.horario}</td>
+                    <td>${fmtEntSaida(ultima)}</td>
                     <td style="font-size:0.8rem; max-width:250px;">${hist}</td>
                 </tr>`;
             }).join('');
